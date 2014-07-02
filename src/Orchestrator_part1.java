@@ -1,4 +1,3 @@
-
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -35,37 +34,32 @@ public class Orchestrator_part1 {
 		return false;
 	}
 
-	public static void main(String[] args) {
+	private static ArtificialClimateControlService acc;
+	private static NaturalClimateSystemService nc;
+	private static PathsService p;
+	private static RoomUsageDatabaseService rud;
+	private static ServicesAndFacilitiesService sf;
+	private static LuminanceManagementService lm;
 
-		ArtificialClimateControlService acc = new ArtificialClimateControlService();
-		NaturalClimateSystemService nc = new NaturalClimateSystemService();
-		PathsService p = new PathsService();
-		RoomUsageDatabaseService rud = new RoomUsageDatabaseService();
-		ServicesAndFacilitiesService sf = new ServicesAndFacilitiesService();
-		LuminanceManagementService lm = new LuminanceManagementService();
+	static {
+		acc = new ArtificialClimateControlService();
+		nc = new NaturalClimateSystemService();
+		p = new PathsService();
+		rud = new RoomUsageDatabaseService();
+		sf = new ServicesAndFacilitiesService();
+		lm = new LuminanceManagementService();
+	}
+
+	public static void main(String[] args) {
 
 		// get all the events with a criteria
 		EventData[] events = rud.searchEvent(null, null, null, null);
 
 		for (int i = 0; i < events.length; i++) {
 			Event event = events[i].getEvents();
-			String eventType = event.getEventType();
+			// String eventType = event.getEventType();
 			String room = event.getRoomId(); // room in which the event is done
 			int expectedPeople = event.getExpectedPeople();
-
-
-			// set the correct level of servicies and facilities based on the
-			// event
-			int LMThreshold = 50;
-			int MHThreshold = 100;
-			int medFreq = 2;
-			int highFreq = 3;
-			if (expectedPeople > LMThreshold && expectedPeople < MHThreshold) {
-				sf.setCleaningFrequency(medFreq);
-			}
-			if (expectedPeople > MHThreshold) {
-				sf.setCleaningFrequency(highFreq);
-			}
 
 			ArrayList<String> roomsToConsider = new ArrayList<String>();
 			roomsToConsider.add(room);
@@ -113,10 +107,22 @@ public class Orchestrator_part1 {
 						// TODO: show alert
 					}
 				}
-
-				
 			}
 
+			// set the correct level of servicies and facilities based on the
+			// event
+			int LMThreshold = 50;
+			int MHThreshold = 100;
+			int medFreq = 2;
+			int highFreq = 3;
+			
+			if (expectedPeople > LMThreshold && expectedPeople < MHThreshold) {
+				sf.setCleaningFrequency(medFreq);
+			}
+			
+			if (expectedPeople > MHThreshold) {
+				sf.setCleaningFrequency(highFreq);
+			}
 		}
 	}
 }

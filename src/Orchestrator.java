@@ -55,14 +55,23 @@ public class Orchestrator {
 
 	public void start() {}
 	
+	private static ArtificialClimateControlService acc;
+	private static NaturalClimateSystemService nc;
+	private static PathsService p;
+	private static RoomUsageDatabaseService rud;
+	private static ServicesAndFacilitiesService sf;
+	private static LuminanceManagementService lm;
+	
+	static {
+		acc = new ArtificialClimateControlService();
+		nc = new NaturalClimateSystemService();
+		p = new PathsService();
+		rud = new RoomUsageDatabaseService();
+		sf = new ServicesAndFacilitiesService();
+		lm = new LuminanceManagementService();
+	}
+	
 	public static void main(String[] args) {
-
-		ArtificialClimateControlService acc = new ArtificialClimateControlService();
-		NaturalClimateSystemService nc = new NaturalClimateSystemService();
-		PathsService p = new PathsService();
-		RoomUsageDatabaseService rud = new RoomUsageDatabaseService();
-		ServicesAndFacilitiesService sf = new ServicesAndFacilitiesService();
-		LuminanceManagementService lm = new LuminanceManagementService();
 
 		// get all the events with a criteria
 		EventData[] events = rud.searchEvent(null, null, null, null);
@@ -73,42 +82,12 @@ public class Orchestrator {
 			String room = event.getRoomId(); // room in which the event is done
 			int expectedPeople = event.getExpectedPeople();
 
-			// set the correct level of food
-			FoodList fl = sf.getFoodStocks();
-			Food[] ff = fl.getFoods();
-			for (int f = 0; f < ff.length; f++) {
-				Food food = ff[f];
-				int neededQuantity = estabilishQuantityOfFood(food.getLabel(),
-						expectedPeople);
-				if (food.getQuantity() < neededQuantity) {
-					int quantityToOrder = neededQuantity - food.getQuantity();
-					ff[f].setQuantity(quantityToOrder);
-				} else
-					food.setQuantity(0);
-			}
-			FoodOrder fo = new FoodOrder();
-			fo.setFoodList(fl);
-			sf.placeFoodOrder(fo);
-
-			// set the correct level of servicies and facilities based on the
-			// event
-			int LMThreshold = 50;
-			int MHThreshold = 100;
-			int medFreq = 2;
-			int highFreq = 3;
-			if (expectedPeople > LMThreshold && expectedPeople < MHThreshold) {
-				sf.setCleaningFrequency(medFreq);
-			}
-			if (expectedPeople > MHThreshold) {
-				sf.setCleaningFrequency(highFreq);
-			}
-
 			ArrayList<String> roomsToConsider = new ArrayList<String>();
 			roomsToConsider.add(room);
 
 			int[] pathsToRoom = p.getPaths(room);
 			int satisfiedCapacity = 0;
-
+		
 			// for all the needed paths I want to obtain the id of the rooms in
 			// each one
 			for (int s = 0; (s < pathsToRoom.length)
@@ -204,7 +183,36 @@ public class Orchestrator {
 							}
 						}
 					}
+				}
+				
+				// set the correct level of food
+				FoodList fl = sf.getFoodStocks();
+				Food[] ff = fl.getFoods();
+				for (int f = 0; f < ff.length; f++) {
+					Food food = ff[f];
+					int neededQuantity = estabilishQuantityOfFood(food.getLabel(),
+							expectedPeople);
+					if (food.getQuantity() < neededQuantity) {
+						int quantityToOrder = neededQuantity - food.getQuantity();
+						ff[f].setQuantity(quantityToOrder);
+					} else
+						food.setQuantity(0);
+				}
+				FoodOrder fo = new FoodOrder();
+				fo.setFoodList(fl);
+				sf.placeFoodOrder(fo);
 
+				// set the correct level of servicies and facilities based on the
+				// event
+				int LMThreshold = 50;
+				int MHThreshold = 100;
+				int medFreq = 2;
+				int highFreq = 3;
+				if (expectedPeople > LMThreshold && expectedPeople < MHThreshold) {
+					sf.setCleaningFrequency(medFreq);
+				}
+				if (expectedPeople > MHThreshold) {
+					sf.setCleaningFrequency(highFreq);
 				}
 			}
 
