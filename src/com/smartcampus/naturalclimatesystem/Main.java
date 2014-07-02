@@ -7,14 +7,13 @@ public class Main {
 		Location l = new Location();
 		l.setRoomId("A12");
 		l.setWindowsId(2);
-		
+	
 		System.out.println("TEST Locale");
 				
 		System.out.println("getFullLocation(): ");
 		System.out.println("  " + l.getFullLocation());
 		
 		NaturalClimateSystemService ncss = new NaturalClimateSystemService();
-		
     	System.out.println("openWindow():");
     	System.out.println("  " + ncss.openWindow(l));
     	System.out.println("closeWindow():");

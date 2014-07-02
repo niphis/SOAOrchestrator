@@ -4,6 +4,14 @@ public class ArtificialClimateControlService implements ArtificialClimateControl
 	private ACCClient user;
 	private ArtificialClimateControlSystem system;
 
+	/*public int getIndoorStatus(String aRoomId) {
+		double ran = Math.random();
+		if (ran < 0.01)
+			return -1;
+		int temperature = 10 + (int) ran * 20;
+		return temperature;
+	}*/
+	
 	public indoorStatus getIndoorStatus(String aRoomId) {
 		float temperature = 10 + (float) Math.random() * 20 ;
 		float humidity = 20 + (float) Math.random() * 60;
