@@ -1,14 +1,10 @@
-package com.smartcampus.soa;
+
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 
 import com.smartcampus.acc.ArtificialClimateControlService;
 import com.smartcampus.acc.indoorStatus;
 import com.smartcampus.luminancemanagement.LuminanceManagementService;
-import com.smartcampus.luminancemanagement.RoomSettings;
-import com.smartcampus.luminancemanagement.Spotlight;
-import com.smartcampus.luminancemanagement.Window;
 import com.smartcampus.naturalclimatesystem.Location;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemService;
 import com.smartcampus.naturalclimatesystem.WeatherCondition;
@@ -18,12 +14,9 @@ import com.smartcampus.paths.PathsService;
 import com.smartcampus.roomusagedatabase.Event;
 import com.smartcampus.roomusagedatabase.EventData;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabaseService;
-import com.smartcampus.servicesfacilities.Food;
-import com.smartcampus.servicesfacilities.FoodList;
-import com.smartcampus.servicesfacilities.FoodOrder;
 import com.smartcampus.servicesfacilities.ServicesAndFacilitiesService;
 
-public class SOAOrchestrator_part1 {
+public class Orchestrator_part1 {
 
 	private static float estabilishDesiredTemperature(Date date,
 			float outdoorTemperature, String roomId) {

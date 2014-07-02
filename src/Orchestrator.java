@@ -1,7 +1,4 @@
-package com.smartcampus.soa;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 
 import com.smartcampus.acc.ArtificialClimateControlService;
@@ -24,7 +21,7 @@ import com.smartcampus.servicesfacilities.FoodList;
 import com.smartcampus.servicesfacilities.FoodOrder;
 import com.smartcampus.servicesfacilities.ServicesAndFacilitiesService;
 
-public class SOA {
+public class Orchestrator {
 
 	private static float estabilishDesiredTemperature(Date date,
 			float outdoorTemperature, String roomId) {
@@ -56,6 +53,8 @@ public class SOA {
 		return false;
 	}
 
+	public void start() {}
+	
 	public static void main(String[] args) {
 
 		ArtificialClimateControlService acc = new ArtificialClimateControlService();
