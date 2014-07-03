@@ -53,15 +53,16 @@ public class Orchestrator {
 		return false;
 	}
 
-	public void start() {}
-	
+	public void start() {
+	}
+
 	private static ArtificialClimateControlService acc;
 	private static NaturalClimateSystemService nc;
 	private static PathsService p;
 	private static RoomUsageDatabaseService rud;
 	private static ServicesAndFacilitiesService sf;
 	private static LuminanceManagementService lm;
-	
+
 	static {
 		acc = new ArtificialClimateControlService();
 		nc = new NaturalClimateSystemService();
@@ -70,38 +71,60 @@ public class Orchestrator {
 		sf = new ServicesAndFacilitiesService();
 		lm = new LuminanceManagementService();
 	}
+
+	private static enum WakeReason {
+		DAILY_WAKEUP, CLIMATE_WAKEUP, LUMINANCE_WAKEUP, FOOD_WAKEUP, CLEANING_WAKEUP
+	};
+
+	private static EventData[] events;
+	private static ArrayList<ArrayList<String>> roomsPerEvent = new ArrayList<ArrayList<String>>();
+
+	// current state
+	private static Event event;
+	private static String eventType;
+	private static ArrayList<String> roomsToConsider;
+	private static String room;
+	private static int expectedPeople;
 	
-	public static void main(String[] args) {
-
-		// get all the events with a criteria
-		EventData[] events = rud.searchEvent(null, null, null, null);
-
-		for (int i = 0; i < events.length; i++) {
-			Event event = events[i].getEvents();
-			String eventType = event.getEventType();
-			String room = event.getRoomId(); // room in which the event is done
-			int expectedPeople = event.getExpectedPeople();
-
-			ArrayList<String> roomsToConsider = new ArrayList<String>();
-			roomsToConsider.add(room);
-
-			int[] pathsToRoom = p.getPaths(room);
-			int satisfiedCapacity = 0;
+	private static void wakeUp(WakeReason reason) {
+		switch (reason) {
 		
-			// for all the needed paths I want to obtain the id of the rooms in
-			// each one
-			for (int s = 0; (s < pathsToRoom.length)
-					&& (satisfiedCapacity < expectedPeople); s++) {
-				PathData pd = p.getPathAttributes(pathsToRoom[s]);
-				satisfiedCapacity += pd.getCapacity();
-				PathComponent[] componentArray = pd.getPath().getComponents();
-				for (int r = 0; r < componentArray.length; r++) {
-					roomsToConsider.add(componentArray[r].getId());
-				}
-			}
+		case DAILY_WAKEUP:
+			events = rud.searchEvent(null, null, null, null);
 
-			// for each room that has to be considered I have to obtain the
-			// correct luminance and temperature level
+			for (int i = 0; i < events.length; i++) {
+				Event event = events[i].getEvents();
+				String room = event.getRoomId(); // room in which the event is
+													// done
+				int expectedPeople = event.getExpectedPeople();
+
+				ArrayList<String> roomsToConsider = new ArrayList<String>();
+				roomsToConsider.add(room);
+
+				int[] pathsToRoom = p.getPaths(room);
+				int satisfiedCapacity = 0;
+
+				// for all the needed paths I want to obtain the id of the rooms
+				// in
+				// each one
+				for (int s = 0; (s < pathsToRoom.length)
+						&& (satisfiedCapacity < expectedPeople); s++) {
+					PathData pd = p.getPathAttributes(pathsToRoom[s]);
+					satisfiedCapacity += pd.getCapacity();
+					PathComponent[] componentArray = pd.getPath()
+							.getComponents();
+					for (int r = 0; r < componentArray.length; r++) {
+						roomsToConsider.add(componentArray[r].getId());
+					}
+				}
+
+				roomsPerEvent.add(roomsToConsider);
+			}
+			break;
+
+		// Input State: roomsToConsider, event, room
+		case CLIMATE_WAKEUP:
+
 			for (int k = 0; k < roomsToConsider.size(); k++) {
 
 				String roomId = roomsToConsider.get(k);
@@ -128,6 +151,15 @@ public class Orchestrator {
 						// TODO: show alert
 					}
 				}
+			}
+
+			break;
+
+		// Input State: eventType
+		case LUMINANCE_WAKEUP:
+			for (int k = 0; k < roomsToConsider.size(); k++) {
+
+				String roomId = roomsToConsider.get(k);
 
 				// adapt luminance level
 				float desiredLuminance = estabilishDesiredLuminance(eventType);
@@ -184,38 +216,72 @@ public class Orchestrator {
 						}
 					}
 				}
-				
-				// set the correct level of food
-				FoodList fl = sf.getFoodStocks();
-				Food[] ff = fl.getFoods();
-				for (int f = 0; f < ff.length; f++) {
-					Food food = ff[f];
-					int neededQuantity = estabilishQuantityOfFood(food.getLabel(),
-							expectedPeople);
-					if (food.getQuantity() < neededQuantity) {
-						int quantityToOrder = neededQuantity - food.getQuantity();
-						ff[f].setQuantity(quantityToOrder);
-					} else
-						food.setQuantity(0);
-				}
-				FoodOrder fo = new FoodOrder();
-				fo.setFoodList(fl);
-				sf.placeFoodOrder(fo);
-
-				// set the correct level of servicies and facilities based on the
-				// event
-				int LMThreshold = 50;
-				int MHThreshold = 100;
-				int medFreq = 2;
-				int highFreq = 3;
-				if (expectedPeople > LMThreshold && expectedPeople < MHThreshold) {
-					sf.setCleaningFrequency(medFreq);
-				}
-				if (expectedPeople > MHThreshold) {
-					sf.setCleaningFrequency(highFreq);
-				}
 			}
 
+			break;
+			
+		// Input State: expectedPeople 
+		case FOOD_WAKEUP:
+			// set the correct level of food
+			FoodList fl = sf.getFoodStocks();
+			Food[] ff = fl.getFoods();
+			for (int f = 0; f < ff.length; f++) {
+				Food food = ff[f];
+				int neededQuantity = estabilishQuantityOfFood(
+						food.getLabel(), expectedPeople);
+				if (food.getQuantity() < neededQuantity) {
+					int quantityToOrder = neededQuantity
+							- food.getQuantity();
+					ff[f].setQuantity(quantityToOrder);
+				} else
+					food.setQuantity(0);
+			}
+			FoodOrder fo = new FoodOrder();
+			fo.setFoodList(fl);
+			sf.placeFoodOrder(fo);
+			
+			break;
+			
+		// Input State: expectedPeople 
+		case CLEANING_WAKEUP:
+			
+			// set the correct level of servicies and facilities based on
+			// the
+			// event
+			int LMThreshold = 50;
+			int MHThreshold = 100;
+			int medFreq = 2;
+			int highFreq = 3;
+			
+			if (expectedPeople > LMThreshold
+					&& expectedPeople < MHThreshold) {
+				sf.setCleaningFrequency(medFreq);
+			}
+			
+			if (expectedPeople > MHThreshold) {
+				sf.setCleaningFrequency(highFreq);
+			}
+			
+			break;
+		}
+	}
+
+	public static void main(String[] args) {
+		
+		wakeUp(WakeReason.DAILY_WAKEUP);
+		
+		for (int i = 0; i < events.length; i++) {
+			event = events[i].getEvents();
+			eventType = event.getEventType();
+			room = event.getRoomId(); // room in which the event is done
+			roomsToConsider = roomsPerEvent.get(i);
+			expectedPeople = event.getExpectedPeople();
+			
+			wakeUp(WakeReason.CLIMATE_WAKEUP);
+			wakeUp(WakeReason.LUMINANCE_WAKEUP);
+			wakeUp(WakeReason.FOOD_WAKEUP);
+			wakeUp(WakeReason.CLEANING_WAKEUP);
+			
 		}
 	}
 }
