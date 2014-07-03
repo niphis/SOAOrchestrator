@@ -1,5 +1,6 @@
-import java.util.ArrayList;
+import java.sql.Time;
 import java.util.Date;
+import java.util.PriorityQueue;
 
 import com.smartcampus.acc.ArtificialClimateControlService;
 import com.smartcampus.acc.indoorStatus;
@@ -53,8 +54,9 @@ public class Orchestrator {
 		return false;
 	}
 
-	public void start() {
-	}
+	private static enum WakeReason {
+		DAILY_WAKEUP, CLIMATE_WAKEUP, LUMINANCE_WAKEUP, FOOD_WAKEUP, CLEANING_WAKEUP
+	};
 
 	private static ArtificialClimateControlService acc;
 	private static NaturalClimateSystemService nc;
@@ -63,6 +65,31 @@ public class Orchestrator {
 	private static ServicesAndFacilitiesService sf;
 	private static LuminanceManagementService lm;
 
+	private static class TimerEvent implements Comparable<TimerEvent> {
+		public WakeReason reason;
+		public Time time;
+		public Event event;
+		public String room;
+
+		public TimerEvent(WakeReason reason) {
+			this.reason = reason;
+		}
+
+		public TimerEvent(WakeReason reason, Time time, Event event, String room) {
+			this.reason = reason;
+			this.time = time;
+			this.event = event;
+			this.room = room;
+		}
+
+		@Override
+		public int compareTo(TimerEvent o) {
+			return time.compareTo(o.time);
+		}
+	}
+
+	private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
+
 	static {
 		acc = new ArtificialClimateControlService();
 		nc = new NaturalClimateSystemService();
@@ -70,36 +97,24 @@ public class Orchestrator {
 		rud = new RoomUsageDatabaseService();
 		sf = new ServicesAndFacilitiesService();
 		lm = new LuminanceManagementService();
+
+		// INITIAL EVENT SCHEDULING
+		TimerEvent a = new TimerEvent(WakeReason.DAILY_WAKEUP);
+
+		timers.add(a);
 	}
 
-	private static enum WakeReason {
-		DAILY_WAKEUP, CLIMATE_WAKEUP, LUMINANCE_WAKEUP, FOOD_WAKEUP, CLEANING_WAKEUP
-	};
+	private static void wakeUp(TimerEvent a) {
+		switch (a.reason) {
 
-	private static EventData[] events;
-	private static ArrayList<ArrayList<String>> roomsPerEvent = new ArrayList<ArrayList<String>>();
-
-	// current state
-	private static Event event;
-	private static String eventType;
-	private static ArrayList<String> roomsToConsider;
-	private static String room;
-	private static int expectedPeople;
-	
-	private static void wakeUp(WakeReason reason) {
-		switch (reason) {
-		
-		case DAILY_WAKEUP:
-			events = rud.searchEvent(null, null, null, null);
+		case DAILY_WAKEUP: {
+			EventData[] events = rud.searchEvent(null, null, null, null);
 
 			for (int i = 0; i < events.length; i++) {
 				Event event = events[i].getEvents();
 				String room = event.getRoomId(); // room in which the event is
 													// done
 				int expectedPeople = event.getExpectedPeople();
-
-				ArrayList<String> roomsToConsider = new ArrayList<String>();
-				roomsToConsider.add(room);
 
 				int[] pathsToRoom = p.getPaths(room);
 				int satisfiedCapacity = 0;
@@ -114,124 +129,112 @@ public class Orchestrator {
 					PathComponent[] componentArray = pd.getPath()
 							.getComponents();
 					for (int r = 0; r < componentArray.length; r++) {
-						roomsToConsider.add(componentArray[r].getId());
+						String rid = componentArray[r].getId();
+						scheduleTimers(event, rid);
 					}
 				}
-
-				roomsPerEvent.add(roomsToConsider);
 			}
+		}
 			break;
 
 		// Input State: roomsToConsider, event, room
-		case CLIMATE_WAKEUP:
+		case CLIMATE_WAKEUP: {
+			String roomId = a.room;
 
-			for (int k = 0; k < roomsToConsider.size(); k++) {
-
-				String roomId = roomsToConsider.get(k);
-
-				Location l = new Location();
-				l.setRoomId(roomId);
-				WeatherCondition wc = nc.getWeatherCondition(l);
-				float outdoorTemperature = wc.get_temperature();
-				float desiredTemperature = estabilishDesiredTemperature(
-						event.getDate(), outdoorTemperature, roomId);
-				float indoorTemperature = acc.getIndoorStatus(roomId)
-						.getTemperaure();
-				// choose if use natural or artificial climate control system
-				if (naturalClimateUsable(desiredTemperature, indoorTemperature,
-						outdoorTemperature, wc.get_pollution())) {
-					if (nc.openWindow(l)) {
-						// TODO: show alert
-					}
-				} else {
-					acc.setIndoorParameters(new indoorStatus(room,
-							desiredTemperature, 0, 0, 0));// TODO: passare
-															// valori NULL
-					if (nc.closeWindow(l)) {
-						// TODO: show alert
-					}
+			Location l = new Location();
+			l.setRoomId(roomId);
+			WeatherCondition wc = nc.getWeatherCondition(l);
+			float outdoorTemperature = wc.get_temperature();
+			float desiredTemperature = estabilishDesiredTemperature(
+					a.event.getDate(), outdoorTemperature, roomId);
+			float indoorTemperature = acc.getIndoorStatus(roomId)
+					.getTemperaure();
+			// choose if use natural or artificial climate control system
+			if (naturalClimateUsable(desiredTemperature, indoorTemperature,
+					outdoorTemperature, wc.get_pollution())) {
+				if (nc.openWindow(l)) {
+					// TODO: show alert
+				}
+			} else {
+				acc.setIndoorParameters(new indoorStatus(roomId,
+						desiredTemperature, 0, 0, 0));// TODO: passare
+														// valori NULL
+				if (nc.closeWindow(l)) {
+					// TODO: show alert
 				}
 			}
-
+		}
 			break;
 
-		// Input State: eventType
-		case LUMINANCE_WAKEUP:
-			for (int k = 0; k < roomsToConsider.size(); k++) {
+		case LUMINANCE_WAKEUP: {
+			String roomId = a.room;
 
-				String roomId = roomsToConsider.get(k);
+			// adapt luminance level
+			float desiredLuminance = estabilishDesiredLuminance(a.event
+					.getEventType());
+			float indoorLuminance = lm.getIndoorLuminance(roomId);
+			float outdoorLuminance = lm.getOutdoorLuminance(roomId);
 
-				// adapt luminance level
-				float desiredLuminance = estabilishDesiredLuminance(eventType);
-				float indoorLuminance = lm.getIndoorLuminance(roomId);
-				float outdoorLuminance = lm.getOutdoorLuminance(roomId);
+			RoomSettings rs = new RoomSettings();
+			rs.setRoomId(roomId);
 
-				RoomSettings rs = new RoomSettings();
-				rs.setRoomId(roomId);
+			while (true) {
 
-				while (true) {
-
-					if (desiredLuminance > indoorLuminance) {
-						// need to increase luminance
-						if (desiredLuminance < outdoorLuminance) {
-							// use natural system
-							if (rs._windows.get(0).getAngle() == 1) { // blind
-																		// is up
-								// switch on spotlight
-								for (Spotlight s : rs._spotlights)
-									s.setLuminance(desiredLuminance);
-								break;
-							} else {
-								// blind up
-								for (Window w : rs._windows) {
-									w.setAngle(estabilishAngle(indoorLuminance,
-											outdoorLuminance));
-									indoorLuminance = lm
-											.getIndoorLuminance(roomId);
-								}
-							}
-						} else {
+				if (desiredLuminance > indoorLuminance) {
+					// need to increase luminance
+					if (desiredLuminance < outdoorLuminance) {
+						// use natural system
+						if (rs._windows.get(0).getAngle() == 1) { // blind
+							// is up
 							// switch on spotlight
 							for (Spotlight s : rs._spotlights)
 								s.setLuminance(desiredLuminance);
+							break;
+						} else {
+							// blind up
+							for (Window w : rs._windows) {
+								w.setAngle(estabilishAngle(indoorLuminance,
+										outdoorLuminance));
+								indoorLuminance = lm.getIndoorLuminance(roomId);
+							}
 						}
 					} else {
-						// need to decrease luminance
-						if (rs._spotlights.get(0).getLuminance() > 0/*
-																	 * the light
-																	 * is
-																	 * switched
-																	 * on
-																	 */) {
-							// switch off spotligth
-							for (Spotlight s : rs._spotlights)
-								s.setLuminance(0);
-							indoorLuminance = lm.getIndoorLuminance(roomId);
-						} else {
-							// blind down
-							for (Window w : rs._windows) {
-								w.setAngle(0);
-								break;
-							}
+						// switch on spotlight
+						for (Spotlight s : rs._spotlights)
+							s.setLuminance(desiredLuminance);
+					}
+				} else {
+					// need to decrease luminance
+					if (rs._spotlights.get(0).getLuminance() > 0/*
+																 * the light is
+																 * switched on
+																 */) {
+						// switch off spotligth
+						for (Spotlight s : rs._spotlights)
+							s.setLuminance(0);
+						indoorLuminance = lm.getIndoorLuminance(roomId);
+					} else {
+						// blind down
+						for (Window w : rs._windows) {
+							w.setAngle(0);
+							break;
 						}
 					}
 				}
 			}
-
+		}
 			break;
-			
-		// Input State: expectedPeople 
-		case FOOD_WAKEUP:
+
+		case FOOD_WAKEUP: {
 			// set the correct level of food
 			FoodList fl = sf.getFoodStocks();
 			Food[] ff = fl.getFoods();
 			for (int f = 0; f < ff.length; f++) {
 				Food food = ff[f];
-				int neededQuantity = estabilishQuantityOfFood(
-						food.getLabel(), expectedPeople);
+				int neededQuantity = estabilishQuantityOfFood(food.getLabel(),
+						a.event.getExpectedPeople());
 				if (food.getQuantity() < neededQuantity) {
-					int quantityToOrder = neededQuantity
-							- food.getQuantity();
+					int quantityToOrder = neededQuantity - food.getQuantity();
 					ff[f].setQuantity(quantityToOrder);
 				} else
 					food.setQuantity(0);
@@ -239,12 +242,12 @@ public class Orchestrator {
 			FoodOrder fo = new FoodOrder();
 			fo.setFoodList(fl);
 			sf.placeFoodOrder(fo);
-			
+		}
 			break;
-			
-		// Input State: expectedPeople 
-		case CLEANING_WAKEUP:
-			
+
+		// Input State: expectedPeople
+		case CLEANING_WAKEUP: {
+
 			// set the correct level of servicies and facilities based on
 			// the
 			// event
@@ -252,36 +255,48 @@ public class Orchestrator {
 			int MHThreshold = 100;
 			int medFreq = 2;
 			int highFreq = 3;
-			
-			if (expectedPeople > LMThreshold
-					&& expectedPeople < MHThreshold) {
+			int expectedPeople = a.event.getExpectedPeople();
+
+			if (expectedPeople > LMThreshold && expectedPeople < MHThreshold) {
 				sf.setCleaningFrequency(medFreq);
 			}
-			
+
 			if (expectedPeople > MHThreshold) {
 				sf.setCleaningFrequency(highFreq);
 			}
-			
+		}
 			break;
 		}
 	}
 
+	private static void scheduleTimers(Event ev, String rid) {
+
+		TimerEvent a;
+
+		// CLIMATE_WAKEUP scheduling
+		a = new TimerEvent(WakeReason.CLIMATE_WAKEUP, ev.getStartTime(), ev,
+				rid);
+		timers.add(a);
+
+		// LUMINANCE_WAKEUP scheduling
+		a = new TimerEvent(WakeReason.LUMINANCE_WAKEUP, ev.getStartTime(), ev,
+				rid);
+		timers.add(a);
+
+		// FOOD_WAKEUP scheduling
+		a = new TimerEvent(WakeReason.FOOD_WAKEUP, ev.getStartTime(), ev, rid);
+		timers.add(a);
+
+		// CLEANING_WAKEUP scheduling
+		a = new TimerEvent(WakeReason.CLEANING_WAKEUP, ev.getStartTime(), ev,
+				rid);
+		timers.add(a);
+
+	}
+
 	public static void main(String[] args) {
-		
-		wakeUp(WakeReason.DAILY_WAKEUP);
-		
-		for (int i = 0; i < events.length; i++) {
-			event = events[i].getEvents();
-			eventType = event.getEventType();
-			room = event.getRoomId(); // room in which the event is done
-			roomsToConsider = roomsPerEvent.get(i);
-			expectedPeople = event.getExpectedPeople();
-			
-			wakeUp(WakeReason.CLIMATE_WAKEUP);
-			wakeUp(WakeReason.LUMINANCE_WAKEUP);
-			wakeUp(WakeReason.FOOD_WAKEUP);
-			wakeUp(WakeReason.CLEANING_WAKEUP);
-			
-		}
+		TimerEvent timerEvent;
+		while ((timerEvent = timers.poll()) != null)
+			wakeUp(timerEvent);
 	}
 }

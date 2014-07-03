@@ -1,5 +1,6 @@
-import java.util.ArrayList;
+import java.sql.Time;
 import java.util.Date;
+import java.util.PriorityQueue;
 
 import com.smartcampus.acc.ArtificialClimateControlService;
 import com.smartcampus.acc.indoorStatus;
@@ -31,43 +32,64 @@ public class Orchestrator_part1 {
 			return true;
 		return false;
 	}
-	
-	private enum WakeReason { DAILY_WAKEUP, CLIMATE_WAKEUP };
-	
+
+	private enum WakeReason {
+		DAILY_WAKEUP, CLIMATE_WAKEUP
+	};
+
 	private static ArtificialClimateControlService acc;
 	private static NaturalClimateSystemService nc;
 	private static PathsService p;
 	private static RoomUsageDatabaseService rud;
 
+	private static class TimerEvent implements Comparable<TimerEvent> {
+		public WakeReason reason;
+		public Time time;
+		public Event event;
+		public String room;
+
+		public TimerEvent(WakeReason reason) {
+			this.reason = reason;
+		}
+
+		public TimerEvent(WakeReason reason, Time time, Event event, String room) {
+			this.reason = reason;
+			this.time = time;
+			this.event = event;
+			this.room = room;
+		}
+
+		@Override
+		public int compareTo(TimerEvent o) {
+			return time.compareTo(o.time);
+		}
+	}
+
+	private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
+	
 	static {
 		acc = new ArtificialClimateControlService();
 		nc = new NaturalClimateSystemService();
 		p = new PathsService();
 		rud = new RoomUsageDatabaseService();
+		
+		// INITIAL EVENT SCHEDULING
+		TimerEvent a = new TimerEvent(WakeReason.DAILY_WAKEUP);
+		
+		timers.add(a);
 	}
 
-	private static EventData[] events;
-	private static ArrayList<ArrayList<String>> roomsPerEvent = new ArrayList<ArrayList<String>>();
+	private static void wakeUp(TimerEvent a) {
+		switch (a.reason) {
 
-	// current state
-	private static Event event;
-	private static ArrayList<String> roomsToConsider;
-	private static String room;
-	
-	private static void wakeUp(WakeReason reason) {
-		switch (reason) {
-		
 		case DAILY_WAKEUP:
-			events = rud.searchEvent(null, null, null, null);
+			EventData[] events = rud.searchEvent(null, null, null, null);
 
 			for (int i = 0; i < events.length; i++) {
 				Event event = events[i].getEvents();
 				String room = event.getRoomId(); // room in which the event is
 													// done
 				int expectedPeople = event.getExpectedPeople();
-
-				ArrayList<String> roomsToConsider = new ArrayList<String>();
-				roomsToConsider.add(room);
 
 				int[] pathsToRoom = p.getPaths(room);
 				int satisfiedCapacity = 0;
@@ -82,42 +104,38 @@ public class Orchestrator_part1 {
 					PathComponent[] componentArray = pd.getPath()
 							.getComponents();
 					for (int r = 0; r < componentArray.length; r++) {
-						roomsToConsider.add(componentArray[r].getId());
+						String rid = componentArray[r].getId();
+						scheduleTimers(event, rid);
 					}
 				}
-
-				roomsPerEvent.add(roomsToConsider);
 			}
 			break;
 
 		// Input State: roomsToConsider, event, room
 		case CLIMATE_WAKEUP:
 
-			for (int k = 0; k < roomsToConsider.size(); k++) {
+			String roomId = a.room;
 
-				String roomId = roomsToConsider.get(k);
-
-				Location l = new Location();
-				l.setRoomId(roomId);
-				WeatherCondition wc = nc.getWeatherCondition(l);
-				float outdoorTemperature = wc.get_temperature();
-				float desiredTemperature = estabilishDesiredTemperature(
-						event.getDate(), outdoorTemperature, roomId);
-				float indoorTemperature = acc.getIndoorStatus(roomId)
-						.getTemperaure();
-				// choose if use natural or artificial climate control system
-				if (naturalClimateUsable(desiredTemperature, indoorTemperature,
-						outdoorTemperature, wc.get_pollution())) {
-					if (nc.openWindow(l)) {
-						// TODO: show alert
-					}
-				} else {
-					acc.setIndoorParameters(new indoorStatus(room,
-							desiredTemperature, 0, 0, 0));// TODO: passare
-															// valori NULL
-					if (nc.closeWindow(l)) {
-						// TODO: show alert
-					}
+			Location l = new Location();
+			l.setRoomId(roomId);
+			WeatherCondition wc = nc.getWeatherCondition(l);
+			float outdoorTemperature = wc.get_temperature();
+			float desiredTemperature = estabilishDesiredTemperature(
+					a.event.getDate(), outdoorTemperature, roomId);
+			float indoorTemperature = acc.getIndoorStatus(roomId)
+					.getTemperaure();
+			// choose if use natural or artificial climate control system
+			if (naturalClimateUsable(desiredTemperature, indoorTemperature,
+					outdoorTemperature, wc.get_pollution())) {
+				if (nc.openWindow(l)) {
+					// TODO: show alert
+				}
+			} else {
+				acc.setIndoorParameters(new indoorStatus(roomId,
+						desiredTemperature, 0, 0, 0));// TODO: passare
+														// valori NULL
+				if (nc.closeWindow(l)) {
+					// TODO: show alert
 				}
 			}
 
@@ -125,16 +143,21 @@ public class Orchestrator_part1 {
 		}
 	}
 
+	private static void scheduleTimers(Event ev, String rid) {
+		
+		// CLIMATE_WAKEUP scheduling
+		TimerEvent a = new TimerEvent(
+				WakeReason.CLIMATE_WAKEUP,
+				ev.getStartTime(),
+				ev,
+				rid);
+		
+		timers.add(a);
+	}
+
 	public static void main(String[] args) {
-		
-		wakeUp(WakeReason.DAILY_WAKEUP);
-		
-		for (int i = 0; i < events.length; i++) {
-			event = events[i].getEvents();
-			room = event.getRoomId(); // room in which the event is done
-			roomsToConsider = roomsPerEvent.get(i);
-			
-			wakeUp(WakeReason.CLIMATE_WAKEUP);			
-		}
+		TimerEvent timerEvent;
+		while((timerEvent = timers.poll()) != null)
+			wakeUp(timerEvent);
 	}
 }
