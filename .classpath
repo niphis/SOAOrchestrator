@@ -6,7 +6,7 @@
 	<classpathentry kind="lib" path="lib/LMSystem.jar"/>
 	<classpathentry kind="lib" path="lib/NCSystem.jar"/>
 	<classpathentry kind="lib" path="lib/PSystem.jar"/>
-	<classpathentry kind="lib" path="lib/SFSystem.jar"/>
 	<classpathentry kind="lib" path="lib/RUSystem.jar"/>
+	<classpathentry kind="lib" path="lib/SFSystem.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

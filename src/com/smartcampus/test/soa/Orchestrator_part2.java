@@ -7,6 +7,11 @@ import java.util.PriorityQueue;
 import com.smartcampus.acc.ArtificialClimateControl;
 import com.smartcampus.acc.ArtificialClimateControlPortType;
 import com.smartcampus.acc.xsd.IndoorStatus;
+import com.smartcampus.luminancemanagement.LuminanceManagement;
+import com.smartcampus.luminancemanagement.LuminanceManagementPortType;
+import com.smartcampus.luminancemanagement.xsd.Room;
+import com.smartcampus.luminancemanagement.xsd.Spotlight;
+import com.smartcampus.luminancemanagement.xsd.Window;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
 import com.smartcampus.naturalclimatesystem.xsd.Location;
@@ -19,20 +24,21 @@ import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
 import com.smartcampus.roomusagedatabase.xsd.EventData;
 
-public class Orchestrator_part1 {
+public class Orchestrator_part2 {
 
 	private enum WakeReason {
-		DAILY_WAKEUP, CLIMATE_WAKEUP
+		DAILY_WAKEUP, CLIMATE_WAKEUP, LUMINANCE_WAKEUP
 	};
 
 	private static ArtificialClimateControlPortType acc;
 	private static NaturalClimateSystemPortType nc;
 	private static PathsPortType p;
 	private static RoomUsageDatabasePortType rud;
-
+	private static LuminanceManagementPortType lm;
 
 	private static com.smartcampus.naturalclimatesystem.xsd.ObjectFactory ncsObjFactory = new com.smartcampus.naturalclimatesystem.xsd.ObjectFactory();
 	private static com.smartcampus.acc.xsd.ObjectFactory accObjFactory = new com.smartcampus.acc.xsd.ObjectFactory();
+	// private static com.smartcampus.luminancemanagement.xsd.ObjectFactory lmObjFactory = new com.smartcampus.luminancemanagement.xsd.ObjectFactory();
 
 	private static class TimerEvent implements Comparable<TimerEvent> {
 		public WakeReason reason;
@@ -68,6 +74,8 @@ public class Orchestrator_part1 {
 				.getNaturalClimateSystemHttpSoap11Endpoint();
 		p = new Paths().getPathsHttpSoap11Endpoint();
 		rud = new RoomUsageDatabase().getRoomUsageDatabaseHttpSoap11Endpoint();
+		lm = new LuminanceManagement()
+				.getLuminanceManagementHttpSoap11Endpoint();
 
 		// INITIAL EVENT SCHEDULING
 		TimerEvent a = new TimerEvent(WakeReason.DAILY_WAKEUP);
@@ -206,6 +214,119 @@ public class Orchestrator_part1 {
 			}
 		}
 			break;
+		case LUMINANCE_WAKEUP: {
+			String roomId = a.room;
+
+			// adapt luminance level
+			float desiredLuminance = estabilishDesiredLuminance(a.event
+					.getEventType().getValue());
+			System.out.print("[LM] Getting indoor luminance for room " + roomId
+					+ "... ");
+			float indoorLuminance = lm.getIndoorLuminance(roomId);
+			System.out.println("done");
+			System.out.println("Indoor Luminance: " + indoorLuminance);
+			
+			System.out.print("[LM] Getting outdoor luminance for room "
+					+ roomId + "... ");
+			float outdoorLuminance = lm.getOutdoorLuminance(roomId);
+			System.out.println("done");
+			System.out.println("Outdoor Luminance: " + outdoorLuminance);
+			
+			System.out.print("[LM] Getting room settings for room "
+					+ roomId + "... ");
+			Room rs = lm.getCurrentRoomSettings(roomId);
+			System.out.println("done");
+			
+
+			while (true) {
+
+				if (desiredLuminance > indoorLuminance) {
+					// need to increase luminance
+					if (desiredLuminance < outdoorLuminance) {
+						// use natural system
+						if (rs.getWindows().get(0).getAngle() == 1) { // blind
+							// is up
+							// switch on spotlight
+							for (Spotlight s : rs.getSpotlights()) {
+								s.setLuminance(desiredLuminance);
+								System.out
+								.print("[LM] Calibrating spotlights for room "
+										+ roomId + "... ");
+								lm.calibrateSpotlight(rs);
+								System.out.println("done");
+							}
+							
+							break;
+						} else {
+							// blind up
+							for (Window w : rs.getWindows()) {
+								w.setAngle(estabilishAngle(indoorLuminance,
+										outdoorLuminance));
+								
+								System.out
+								.print("[LM] Regulating blinds for room "
+										+ roomId + "... ");
+								lm.regulateBlind(rs);
+								System.out.println("done");
+								
+								System.out
+										.print("[LM] Getting indoor luminance for room "
+												+ roomId + "... ");
+								indoorLuminance = lm.getIndoorLuminance(roomId);
+								System.out.println("done");
+								System.out.println("Indoor Luminance: " + indoorLuminance);
+							}
+						}
+					} else {
+						// switch on spotlight
+						for (Spotlight s : rs.getSpotlights()) {
+							s.setLuminance(desiredLuminance);
+							System.out
+							.print("[LM] Calibrating spotlights for room "
+									+ roomId + "... ");
+							lm.calibrateSpotlight(rs);
+							System.out.println("done");
+						}
+						break;
+					}
+				} else {
+					// need to decrease luminance
+					if (rs.getSpotlights().get(0).getLuminance() > 0/*
+																 * the light is
+																 * switched on
+																 */) {
+						// switch off spotligth
+						for (Spotlight s : rs.getSpotlights()) {
+							s.setLuminance(0.0f);
+							System.out
+							.print("[LM] Calibrating spotlights for room "
+									+ roomId + "... ");
+							lm.calibrateSpotlight(rs);
+							System.out.println("done");
+						}
+						System.out
+								.print("[LM] Getting indoor luminance for room "
+										+ roomId + "... ");
+						indoorLuminance = lm.getIndoorLuminance(roomId);
+						System.out.println("done");
+						System.out.println("Indoor Luminance: " + indoorLuminance);
+
+					} else {
+						// blind down
+						for (Window w : rs.getWindows()) {
+							w.setAngle(0.0f);
+							System.out
+							.print("[LM] Regulating blinds for room "
+									+ roomId + "... ");
+							lm.regulateBlind(rs);
+							System.out.println("done");
+						}
+						break;
+					}
+				}
+			}
+		}
+			break;
 		}
 	}
 
@@ -279,12 +400,27 @@ public class Orchestrator_part1 {
 		return true;
 	}
 
+	private static float estabilishDesiredLuminance(String eventType) {
+		return 350f;
+	}
+
+	private static float estabilishAngle(float indoorLuminance,
+			float outdoorLuminance) {
+		return 1;
+	}
+
 	private static void scheduleTimers(EventData ev, String rid) {
 
 		// CLIMATE_WAKEUP scheduling
 		TimerEvent a = new TimerEvent(WakeReason.CLIMATE_WAKEUP,
 				ev.getStartTime(), ev, rid);
 		timers.add(a);
+
+		// LUMINANCE_WAKEUP scheduling
+		a = new TimerEvent(WakeReason.LUMINANCE_WAKEUP, ev.getStartTime(), ev,
+				rid);
+		timers.add(a);
+
 	}
 
 	public static void main(String[] args) {
