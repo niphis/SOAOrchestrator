@@ -2,5 +2,11 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="lib/ACSystem.jar"/>
+	<classpathentry kind="lib" path="lib/LMSystem.jar"/>
+	<classpathentry kind="lib" path="lib/NCSystem.jar"/>
+	<classpathentry kind="lib" path="lib/PSystem.jar"/>
+	<classpathentry kind="lib" path="lib/SFSystem.jar"/>
+	<classpathentry kind="lib" path="lib/RUSystem.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
