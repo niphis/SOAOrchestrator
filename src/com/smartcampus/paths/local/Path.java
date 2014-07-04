@@ -1,5 +1,7 @@
 package com.smartcampus.paths.local;
 
+import java.util.Vector;
+
 public class Path {
 	private PathComponent[] _components;
 

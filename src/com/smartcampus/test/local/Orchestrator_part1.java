@@ -1,37 +1,87 @@
 package com.smartcampus.test.local;
-import java.sql.Time;
-import java.util.Date;
+
 import java.util.PriorityQueue;
 
 import com.smartcampus.acc.local.ArtificialClimateControlService;
-import com.smartcampus.acc.local.indoorStatus;
+import com.smartcampus.acc.local.IndoorStatus;
 import com.smartcampus.naturalclimatesystem.local.Location;
 import com.smartcampus.naturalclimatesystem.local.NaturalClimateSystemService;
 import com.smartcampus.naturalclimatesystem.local.WeatherCondition;
 import com.smartcampus.paths.local.PathComponent;
 import com.smartcampus.paths.local.PathData;
 import com.smartcampus.paths.local.PathsService;
-import com.smartcampus.roomusagedatabase.local.Event;
 import com.smartcampus.roomusagedatabase.local.EventData;
 import com.smartcampus.roomusagedatabase.local.RoomUsageDatabaseService;
 
 public class Orchestrator_part1 {
 
-	private static float estabilishDesiredTemperature(Date date,
-			float outdoorTemperature, String roomId) {
-		return 0;
+	private static float estabilishDesiredCo2level(WeatherCondition wc) {
+
+		return Math.min(1000, wc.getCo2level());
 	}
 
-	private static boolean naturalClimateUsable(float desired, float indoor,
-			float outdoor, int pollutionLevel) {
-		int pollutionThreshold = 100;
+	private static float estabilishDesiredTemperature(WeatherCondition outdoorWc) {
+		float out = outdoorWc.getTemperature();
+
+		float tmin = Math.max(18, out / 5 + 17);
+		float tmax = Math.min(30, out / 5 + 22);
+
+		return Math.min(Math.max(tmin, out), tmax);
+	}
+
+	private static float estabilishDesiredHumidity(WeatherCondition outdoorWc) {
+		float out = outdoorWc.getHumidity();
+
+		return Math.min(Math.max(30, out), 50);
+	}
+
+	private static boolean naturalClimateUsable(float desiredT, float desiredH,
+			float desiredC, IndoorStatus is, WeatherCondition wc) {
+
+		// pollution check
+		float pollutionLevel = wc.getCo2level();
+		float pollutionThreshold = 1000;
 		if (pollutionLevel > pollutionThreshold)
 			return false;
-		if ((outdoor > desired) && (desired > indoor))
-			return true;
-		if ((outdoor < desired) && (desired < indoor))
-			return true;
-		return false;
+
+		if (pollutionLevel > desiredC)
+			return false;
+
+		// noise check
+		float noiseThreshold = 80;
+		float noise = wc.getNoiseLevel();
+		if (noise > noiseThreshold)
+			return false;
+
+		// temperature check
+		float indoorT = is.getTemperature();
+		float outdoorT = wc.getTemperature();
+
+		boolean tempOK = false;
+
+		if ((outdoorT > desiredT) && (desiredT > indoorT))
+			tempOK = true;
+		if ((outdoorT < desiredT) && (desiredT < indoorT))
+			tempOK = true;
+
+		if (!tempOK)
+			return false;
+
+		// humidity check
+		float indoorH = is.getHumidity();
+		float outdoorH = wc.getHumidity();
+
+		boolean humOK = false;
+
+		if ((outdoorH > desiredH) && (desiredH > indoorH))
+			humOK = true;
+		if ((outdoorH < desiredH) && (desiredH < indoorH))
+			humOK = true;
+
+		if (!humOK)
+			return false;
+
+		return true;
 	}
 
 	private enum WakeReason {
@@ -45,15 +95,16 @@ public class Orchestrator_part1 {
 
 	private static class TimerEvent implements Comparable<TimerEvent> {
 		public WakeReason reason;
-		public Time time;
-		public Event event;
+		public Long time;
+		public EventData event;
 		public String room;
 
 		public TimerEvent(WakeReason reason) {
 			this.reason = reason;
 		}
 
-		public TimerEvent(WakeReason reason, Time time, Event event, String room) {
+		public TimerEvent(WakeReason reason, Long unixTimestamp,
+				EventData event, String room) {
 			this.reason = reason;
 			this.time = time;
 			this.event = event;
@@ -67,16 +118,16 @@ public class Orchestrator_part1 {
 	}
 
 	private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
-	
+
 	static {
 		acc = new ArtificialClimateControlService();
 		nc = new NaturalClimateSystemService();
 		p = new PathsService();
 		rud = new RoomUsageDatabaseService();
-		
+
 		// INITIAL EVENT SCHEDULING
 		TimerEvent a = new TimerEvent(WakeReason.DAILY_WAKEUP);
-		
+
 		timers.add(a);
 	}
 
@@ -84,10 +135,10 @@ public class Orchestrator_part1 {
 		switch (a.reason) {
 
 		case DAILY_WAKEUP:
-			EventData[] events = rud.searchEvent(null, null, null, null);
+			EventData[] events = rud.searchEvent(null).getEvents();
 
 			for (int i = 0; i < events.length; i++) {
-				Event event = events[i].getEvents();
+				EventData event = events[i];
 				String room = event.getRoomId(); // room in which the event is
 													// done
 				int expectedPeople = event.getExpectedPeople();
@@ -98,9 +149,10 @@ public class Orchestrator_part1 {
 				// for all the needed paths I want to obtain the id of the rooms
 				// in
 				// each one
-				for (int s = 0; (s < pathsToRoom.length)
-						&& (satisfiedCapacity < expectedPeople); s++) {
-					PathData pd = p.getPathAttributes(pathsToRoom[s]);
+				for (int j = 0; j < pathsToRoom.length
+						&& satisfiedCapacity < expectedPeople; j++) {
+					Integer pathId = pathsToRoom[j];
+					PathData pd = p.getPathAttributes(pathId);
 					satisfiedCapacity += pd.getCapacity();
 					PathComponent[] componentArray = pd.getPath()
 							.getComponents();
@@ -120,45 +172,43 @@ public class Orchestrator_part1 {
 			Location l = new Location();
 			l.setRoomId(roomId);
 			WeatherCondition wc = nc.getWeatherCondition(l);
-			float outdoorTemperature = wc.get_temperature();
-			float desiredTemperature = estabilishDesiredTemperature(
-					a.event.getDate(), outdoorTemperature, roomId);
-			float indoorTemperature = acc.getIndoorStatus(roomId)
-					.getTemperaure();
+			IndoorStatus is = acc.getIndoorStatus(roomId);
+
+			float desiredTemperature = estabilishDesiredTemperature(wc);
+			float desiredHumidity = estabilishDesiredHumidity(wc);
+			float desiredCo2level = estabilishDesiredCo2level(wc);
+
 			// choose if use natural or artificial climate control system
-			if (naturalClimateUsable(desiredTemperature, indoorTemperature,
-					outdoorTemperature, wc.get_pollution())) {
-				if (nc.openWindow(l)) {
-					// TODO: show alert
-				}
+			if (naturalClimateUsable(desiredTemperature, desiredHumidity,
+					desiredCo2level, is, wc)) {
+				nc.openWindow(l);
 			} else {
-				acc.setIndoorParameters(new indoorStatus(roomId,
-						desiredTemperature, 0, 0, 0));// TODO: passare
-														// valori NULL
-				if (nc.closeWindow(l)) {
-					// TODO: show alert
-				}
+				is.setRoomID(roomId);
+				is.setTemperature(desiredTemperature);
+				is.setFanSpeed(0.0f);
+				is.setHumidity(desiredHumidity);
+				is.setTimer(0);
+				acc.setIndoorParameters(is);
+
+				nc.closeWindow(l);
 			}
 
 			break;
 		}
 	}
 
-	private static void scheduleTimers(Event ev, String rid) {
-		
+	private static void scheduleTimers(EventData ev, String rid) {
+
 		// CLIMATE_WAKEUP scheduling
-		TimerEvent a = new TimerEvent(
-				WakeReason.CLIMATE_WAKEUP,
-				ev.getStartTime(),
-				ev,
-				rid);
-		
+		TimerEvent a = new TimerEvent(WakeReason.CLIMATE_WAKEUP,
+				ev.getStartTime(), ev, rid);
+
 		timers.add(a);
 	}
 
 	public static void main(String[] args) {
 		TimerEvent timerEvent;
-		while((timerEvent = timers.poll()) != null)
+		while ((timerEvent = timers.poll()) != null)
 			wakeUp(timerEvent);
 	}
 }

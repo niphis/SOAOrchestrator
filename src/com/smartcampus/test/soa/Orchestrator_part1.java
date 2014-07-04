@@ -280,7 +280,6 @@ public class Orchestrator_part1 {
 	}
 
 	private static void scheduleTimers(EventData ev, String rid) {
-
 		// CLIMATE_WAKEUP scheduling
 		TimerEvent a = new TimerEvent(WakeReason.CLIMATE_WAKEUP,
 				ev.getStartTime(), ev, rid);

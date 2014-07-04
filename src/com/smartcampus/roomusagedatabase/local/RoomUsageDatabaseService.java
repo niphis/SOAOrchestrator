@@ -1,17 +1,14 @@
 package com.smartcampus.roomusagedatabase.local;
 
-import java.util.Date;
-import java.sql.Time;
-
 public class RoomUsageDatabaseService implements RUDSystem {
-
-	public void createEvent(EventData aEventData) {
-		return;
+	public boolean createEvent(EventData aEventData) {
+		if (failed())
+			return false;
+		return true;
 	}
 
-	public boolean modifyEvent(String aEventId, EventData aEventData) {
-		double probability = Math.random();
-		if (probability < 0.1)
+	public boolean modifyEvent(EventData aEventData) {
+		if (failed())
 			return false;
 		return true;
 	}
@@ -20,34 +17,40 @@ public class RoomUsageDatabaseService implements RUDSystem {
 		return;
 	}
 
-	public EventData[] searchEvent(String aRoomId, Date aDate, Time aStartTime, String aEventType) {
-		EventData[] evd = new EventData[2];
-		Event e;
+	public EventList searchEvent(EventData aEventData) {
+		if (failed())
+			return null;
 		
-		e = new Event();
-		e.setDate(new Date());
-		e.setStartTime(new Time(System.currentTimeMillis()));
-		e.setEndTime(new Time(System.currentTimeMillis() + 1000*60*3));
-		e.setRoomId("ADInform1");
-		e.setEventType("Laurea");
-		e.setExpectedPeople(150);
+		EventList el = new EventList();
+		EventData[] events =  new EventData[3];
 		
-		evd[0] = new EventData();
-		evd[0].setEvents(e);
+		events[0] = new EventData();
+		events[0].setRoomId("ADInform1");
+		events[0].setDate(System.currentTimeMillis());
+		events[0].setStartTime(System.currentTimeMillis());
+		events[0].setEndTime(System.currentTimeMillis() + 1000*60*60*2);
+		events[0].setExpectedPeople(45);
+		events[0].setEventType("Conference");
 		
-		e = new Event();
-		e.setDate(new Date());
+		events[1] = new EventData();
+		events[1].setRoomId("Aula Magna");
+		events[1].setDate(System.currentTimeMillis());
+		events[1].setStartTime(System.currentTimeMillis() + 1000*60*60*3);
+		events[1].setEndTime(System.currentTimeMillis() + 1000*60*60*5);
+		events[1].setExpectedPeople(200);
+		events[1].setEventType("Degree");
 		
-		e.setStartTime(new Time(System.currentTimeMillis() + 1000*60*3));
-		e.setEndTime(new Time(System.currentTimeMillis() + 1000*60*6));
-		e.setRoomId("ADInform2");
-		e.setEventType("Laurea");
-		e.setExpectedPeople(20);
+		events[2] = new EventData();
+		events[2].setRoomId("ADInform1");
+		events[2].setDate(System.currentTimeMillis() + 1000*60*60*24*2);
+		events[2].setStartTime(System.currentTimeMillis() + 1000*60*60*24*2);
+		events[2].setEndTime(System.currentTimeMillis() + 1000*60*60*24*2 + 1000*60*60*3);
+		events[2].setExpectedPeople(75);
+		events[2].setEventType("Conference");
 		
-		evd[1] = new EventData();
-		evd[1].setEvents(e);
 		
-		return evd;
+		el.setEvents(events);
+		return el;
 	}
 
 	public void insertRoomCharacteristics(RoomCharacteristics aRoomCharacteristics) {
@@ -55,15 +58,22 @@ public class RoomUsageDatabaseService implements RUDSystem {
 	}
 
 	public RoomCharacteristics getRoomCharacteristics(String aRoomId) {
-		RoomCharacteristics data = new RoomCharacteristics();
-		data.setNumberOfWindows(3);
-		data.setRoomHeight(3.2f);
-		data.setRoomId(aRoomId);
-		data.setRoomSize(102.4f);
-		data.setSeatingCapacity(50);
-		data.setWindowSize(6);
-		data.setWindowsOrientation("nord");
-		data.setWindowsPosition("asd");
-		return data;
+		if (failed())
+			return null;
+		
+		RoomCharacteristics rchar = new RoomCharacteristics();
+		
+		rchar.setNumberOfWindows(3);
+		rchar.setRoomHeight(3.2f);
+		rchar.setRoomId(aRoomId);
+		rchar.setRoomSize(102.4f);
+		rchar.setSeatingCapacity(50);
+		rchar.setWindowSize(60);
+		rchar.setWindowsOrientation("north");
+		return rchar;
+	}
+	
+	private boolean failed() {
+		return Math.random() < 0.01;
 	}
 }

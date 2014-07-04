@@ -1,9 +1,10 @@
 package com.smartcampus.servicesfacilities.local;
 
 public class Food {
-	private String label;
-	private int quantity;
-	private String unit;
+	public String label;
+	public int quantity;
+	public String unit;
+	public FoodList foods;
 
 	public String getLabel() {
 		return this.label;

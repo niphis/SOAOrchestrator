@@ -9,6 +9,9 @@ public class PathsService implements PathsSystem {
 	final static private int[] pathsPriorities = { 1, 3, 1, 2, 3, 4, 2, 1, 4, 2 };
 
 	public int[] getPaths(String aRoomId) {
+		if (failed())
+			return null;
+
 		ArrayList<Integer> paths = new ArrayList<Integer>();
 
 		int pathCount = hash(aRoomId);
@@ -30,6 +33,9 @@ public class PathsService implements PathsSystem {
 	}
 
 	public PathData getPathAttributes(int aPathId) {
+		if (failed())
+			return null;
+
 		PathData data = new PathData();
 
 		Path _path = new Path();
@@ -66,5 +72,9 @@ public class PathsService implements PathsSystem {
 			sum += value.charAt(i);
 
 		return sum % pathMaxId;
+	}
+
+	private boolean failed() {
+		return Math.random() < 0.01;
 	}
 }

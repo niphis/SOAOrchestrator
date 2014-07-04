@@ -4,5 +4,5 @@ public interface ACCClient {
 
 	public void indoorParametersSetted();
 
-	public void currentIndoorStatus(indoorStatus aIndoorStatus);
+	public void currentIndoorStatus(IndoorStatus aIndoorStatus);
 }

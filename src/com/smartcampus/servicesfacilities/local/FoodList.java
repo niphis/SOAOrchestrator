@@ -1,13 +1,14 @@
 package com.smartcampus.servicesfacilities.local;
 
 public class FoodList {
-	private Food[] foods;
-
-	public Food[] getFoods() {
-		return this.foods;
-	}
+	public Food[] foods;
+	public FoodOrder foodList;
 
 	public void setFoods(Food[] aFoods) {
 		this.foods = aFoods;
+	}
+
+	public Food[] getFoods() {
+		return this.foods;
 	}
 }

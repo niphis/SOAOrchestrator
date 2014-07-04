@@ -1,17 +1,59 @@
 package com.smartcampus.roomusagedatabase.local;
 
-import java.util.Vector;
-
 public class EventData {
-	public Event _events;
-	public RoomCharacteristics _unnamed_RoomCharacteristics_;
-	public Vector<Event> _unnamed_Event_ = new Vector<Event>();
+	public String _roomId;
+	public long _date;
+	public long _startTime;
+	public long _endTime;
+	public int _expectedPeople;
+	public String _eventType;
+	public EventList _unnamed_EventList_;
 
-	public Event getEvents() {
-		return this._events;
+	public String getRoomId() {
+		return this._roomId;
 	}
 
-	public void setEvents(Event aEvents) {
-		this._events = aEvents;
+	public void setRoomId(String aRoomId) {
+		this._roomId = aRoomId;
+	}
+
+	public int getExpectedPeople() {
+		return this._expectedPeople;
+	}
+
+	public void setExpectedPeople(int aExpecetdPeople) {
+		this._expectedPeople = aExpecetdPeople;
+	}
+
+	public String getEventType() {
+		return this._eventType;
+	}
+
+	public void setEventType(String aEventType) {
+		this._eventType = aEventType;
+	}
+
+	public long getStartTime() {
+		return this._startTime;
+	}
+
+	public void setStartTime(long aStartTime) {
+		this._startTime = aStartTime;
+	}
+
+	public long getEndTime() {
+		return this._endTime;
+	}
+
+	public void setEndTime(long aEndTime) {
+		this._endTime = aEndTime;
+	}
+
+	public long getDate() {
+		return this._date;
+	}
+
+	public void setDate(long aDate) {
+		this._date = aDate;
 	}
 }

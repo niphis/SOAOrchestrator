@@ -3,66 +3,56 @@ package com.smartcampus.naturalclimatesystem.local;
 public class WeatherCondition {
 	public float _humidity;
 	public float _noiseLevel;
-	public int _pollution;
+	public float _co2level;
 	public float _wind;
 	public float _temperature;
 	public Location _location;
 
-	public WeatherCondition(Location l, float t, float h, float w, float n, int p) {
-		this._location = l;
-		this._temperature = t;
-		this._humidity = h;
-		this._wind = w;
-		this._noiseLevel = n;
-		this._pollution = p;
+	public void setHumidity(float aHumidity) {
+		this._humidity = aHumidity;
 	}
 
-	public float get_humidity() {
-		return _humidity;
+	public float getHumidity() {
+		return this._humidity;
 	}
 
-	public void set_humidity(float _humidity) {
-		this._humidity = _humidity;
+	public void setNoiseLevel(float aNoiseLevel) {
+		this._noiseLevel = aNoiseLevel;
 	}
 
-	public float get_noiseLevel() {
-		return _noiseLevel;
+	public float getNoiseLevel() {
+		return this._noiseLevel;
 	}
 
-	public void set_noiseLevel(float _noiseLevel) {
-		this._noiseLevel = _noiseLevel;
+	public void setCo2level(float aCo2level) {
+		this._co2level = aCo2level;
 	}
 
-	public int get_pollution() {
-		return _pollution;
+	public float getCo2level() {
+		return this._co2level;
 	}
 
-	public void set_pollution(int _pollution) {
-		this._pollution = _pollution;
+	public void setWind(float aWind) {
+		this._wind = aWind;
 	}
 
-	public float get_wind() {
-		return _wind;
+	public float getWind() {
+		return this._wind;
 	}
 
-	public void set_wind(float _wind) {
-		this._wind = _wind;
+	public void setTemperature(float aTemperature) {
+		this._temperature = aTemperature;
 	}
 
-	public float get_temperature() {
-		return _temperature;
+	public float getTemperature() {
+		return this._temperature;
 	}
 
-	public void set_temperature(float _temperature) {
-		this._temperature = _temperature;
+	public void setLocation(Location aLocation) {
+		this._location = aLocation;
 	}
 
 	public Location getLocation() {
-		return _location;
+		return this._location;
 	}
-
-	public void setLocation(Location l) {
-		this._location = l;
-	}
-
 }

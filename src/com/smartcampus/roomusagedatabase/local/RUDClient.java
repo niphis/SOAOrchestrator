@@ -2,15 +2,15 @@ package com.smartcampus.roomusagedatabase.local;
 
 public interface RUDClient {
 
-	public boolean eventBooked();
+	public void eventBooked(boolean aResult);
 
-	public boolean eventModified(EventData aEventData);
+	public void eventModified(boolean aResult);
 
-	public boolean deletionConfirmed();
+	public void eventDeleted(boolean aResult);
 
-	public void eventSearched(EventData[] aEventData);
+	public void searchResults(EventList aEventList);
 
-	public boolean roomCharacteriticsInserted();
+	public void roomCharacteriticsInserted(boolean aResult);
 
-	public void roomCharacteristicsRetrieved(RoomCharacteristics aRoomCharacteristics);
+	public void roomCharacteristics(RoomCharacteristics aRoomCharacteristics);
 }

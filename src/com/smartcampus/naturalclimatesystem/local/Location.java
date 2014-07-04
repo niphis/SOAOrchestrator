@@ -6,7 +6,7 @@ public class Location {
 
 	public Location() {
 	}
-	
+
 	public String getRoomId() {
 		return this._roomId;
 	}
@@ -22,7 +22,8 @@ public class Location {
 	public void setWindowsId(int aWindowsId) {
 		this._windowsId = aWindowsId;
 	}
-	public String getFullLocation(){
+
+	public String getFullLocation() {
 		return this.getRoomId() + ";" + Integer.toString(this.getWindowsId());
 	}
 }

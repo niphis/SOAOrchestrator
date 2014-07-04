@@ -6,10 +6,9 @@ public class RoomCharacteristics {
 	public float _roomHeight;
 	public int _numberOfWindows;
 	public float _windowSize;
-	public String _windowsPosition;
 	public String _windowsOrientation;
 	public int _seatingCapacity;
-	public EventData _unnamed_EventData_;
+	public EventList _unnamed_EventList_;
 
 	public String getRoomId() {
 		return this._roomId;
@@ -49,14 +48,6 @@ public class RoomCharacteristics {
 
 	public void setWindowSize(float aWindowSize) {
 		this._windowSize = aWindowSize;
-	}
-
-	public String getWindowsPosition() {
-		return this._windowsPosition;
-	}
-
-	public void setWindowsPosition(String aWindowsPosition) {
-		this._windowsPosition = aWindowsPosition;
 	}
 
 	public String getWindowsOrientation() {

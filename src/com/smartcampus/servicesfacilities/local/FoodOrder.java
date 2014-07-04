@@ -1,24 +1,22 @@
 package com.smartcampus.servicesfacilities.local;
 
-import java.util.Date;
-
 public class FoodOrder {
-	private Date timestamp;
-	private FoodList foodList;
+	public long timestamp;
+	public FoodList foodList;
 
-	public Date getTimestamp() {
-		return this.timestamp;
-	}
-
-	public void setTimestamp(Date aTimestamp) {
+	public void setTimestamp(long aTimestamp) {
 		this.timestamp = aTimestamp;
 	}
 
-	public FoodList getFoodList() {
-		return this.foodList;
+	public long getTimestamp() {
+		return this.timestamp;
 	}
 
 	public void setFoodList(FoodList aFoodList) {
 		this.foodList = aFoodList;
+	}
+
+	public FoodList getFoodList() {
+		return this.foodList;
 	}
 }
