@@ -101,19 +101,20 @@ public class Orchestrator_part1 {
 
 		public TimerEvent(WakeReason reason) {
 			this.reason = reason;
+			this.time = System.currentTimeMillis();
 		}
 
 		public TimerEvent(WakeReason reason, Long unixTimestamp,
 				EventData event, String room) {
 			this.reason = reason;
-			this.time = time;
+			this.time = unixTimestamp;
 			this.event = event;
 			this.room = room;
 		}
 
 		@Override
 		public int compareTo(TimerEvent o) {
-			return time.compareTo(o.time);
+			return (int) (time - o.time);
 		}
 	}
 
