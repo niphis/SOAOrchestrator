@@ -6,6 +6,9 @@ public class ArtificialClimateControlService implements ArtificialClimateControl
 
 	public IndoorStatus getIndoorStatus(String aRoomId) {
 		
+		if (Math.random() < 0.01)
+			return null;
+		
 		IndoorStatus is = new IndoorStatus();
 		
 		is.setTemperature(10 + (float) Math.random() * 20);
