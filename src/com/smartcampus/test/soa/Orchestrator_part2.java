@@ -48,6 +48,7 @@ public class Orchestrator_part2 {
 
 		public TimerEvent(WakeReason reason) {
 			this.reason = reason;
+			this.time = System.currentTimeMillis();
 		}
 
 		public TimerEvent(WakeReason reason, Long unixTimestamp,
