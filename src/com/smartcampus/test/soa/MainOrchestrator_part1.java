@@ -17,6 +17,7 @@ import com.smartcampus.roomusagedatabase.local.RoomUsageDatabaseService;
 import com.smartcampus.test.soa.Orchestrator_part1;
 import com.smartcampus.test.soa.Orchestrator_part1.TimerEvent;
 import com.smartcampus.test.soa.Orchestrator_part1.WakeReason;
+import com.smartcampus.test.soa.Orchestrator_part1.Error;
 
 public class MainOrchestrator_part1 {
 
@@ -37,15 +38,20 @@ public class MainOrchestrator_part1 {
 	}
 	
 	public static void main(String[] args) {
-		
-		int res;
+		Error res;
 		Orchestrator_part1.setArtificialClimateControlPortType(acc);
 		Orchestrator_part1.setNaturalClimateSystemPortType(nc);
 		Orchestrator_part1.setPathsPortType(p);
 		Orchestrator_part1.setRoomUsageDatabasePortType(rud);
 		System.out.println("[ORCH] Start handling of events... ");
-		while ((res = Orchestrator_part1.wakeUp(timers)) != -1);
+		
+		do {
+			res = Orchestrator_part1.wakeUp(timers);
+		}
+		while (res != Error.NO_EVENT);
+		
 		System.out.println("[ORCH] Handling of events completed.");
+
 	}
 	
 }

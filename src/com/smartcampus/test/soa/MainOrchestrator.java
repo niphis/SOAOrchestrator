@@ -14,8 +14,10 @@ import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
 import com.smartcampus.servicesfacilities.ServicesAndFacilities;
 import com.smartcampus.servicesfacilities.ServicesAndFacilitiesPortType;
+import com.smartcampus.test.soa.Orchestrator;
 import com.smartcampus.test.soa.Orchestrator.TimerEvent;
 import com.smartcampus.test.soa.Orchestrator.WakeReason;
+import com.smartcampus.test.soa.Orchestrator.Error;
 
 public class MainOrchestrator {
 	private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
@@ -39,15 +41,21 @@ public class MainOrchestrator {
 	}
 	
 	public static void main(String[] args) {
-		int res;
+		Error res;
 		Orchestrator.setArtificialClimateControlPortType(acc);
 		Orchestrator.setNaturalClimateSystemPortType(nc);
 		Orchestrator.setPathsPortType(p);
 		Orchestrator.setRoomUsageDatabasePortType(rud);
 		Orchestrator.setLuminanceManagementPortType(lm);
 		Orchestrator.setServicesAndFacilitiesPortType(sf);
+		
 		System.out.println("[ORCH] Start handling of events... ");
-		while ((res = Orchestrator.wakeUp(timers)) != -1);
+		
+		do {
+			res = Orchestrator.wakeUp(timers);
+		}
+		while (res != Error.NO_EVENT);
+		
 		System.out.println("[ORCH] Handling of events completed.");
 
 	}

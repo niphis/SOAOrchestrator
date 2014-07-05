@@ -26,9 +26,17 @@ import com.smartcampus.roomusagedatabase.xsd.EventData;
 public class Orchestrator_part1 {
 
 	public enum WakeReason {
-		DAILY_WAKEUP, CLIMATE_WAKEUP
+		DAILY_WAKEUP, 
+		CLIMATE_WAKEUP
 	};
 
+	public enum Error {
+		NO_EVENT, 
+		SUCCESS,
+		DAILY_WAKEUP_ERROR, 
+		CLIMATE_WAKEUP_ERROR, 
+	};
+	
 	private static ArtificialClimateControlPortType acc;
 	private static NaturalClimateSystemPortType nc;
 	private static PathsPortType p;
@@ -79,9 +87,9 @@ public class Orchestrator_part1 {
 		}
 	}
 
-	public static int wakeUp(PriorityQueue<TimerEvent> timers) {
+	public static Error wakeUp(PriorityQueue<TimerEvent> timers) {
 		TimerEvent a = timers.poll();
-		if (a == null) return -1;
+		if (a == null) return Error.NO_EVENT;
 		
 		switch (a.reason) {
 
@@ -109,7 +117,7 @@ public class Orchestrator_part1 {
 				List<Integer> pathsToRoom = p.getPaths(room);
 				if (pathsToRoom == null) {
 					System.out.println("FAILED!"); 
-					return 1;
+					return Error.DAILY_WAKEUP_ERROR;
 				}
 				System.out.println("done");
 				int satisfiedCapacity = 0;
@@ -125,7 +133,7 @@ public class Orchestrator_part1 {
 					PathData pd = p.getPathAttributes(pathId);
 					if (pd == null) {
 						System.out.println("FAILED!"); 
-						return 1;
+						return Error.DAILY_WAKEUP_ERROR;
 					}
 					System.out.println("done");
 					satisfiedCapacity += pd.getCapacity();
@@ -153,7 +161,7 @@ public class Orchestrator_part1 {
 			WeatherCondition wc = nc.getWeatherCondition(l);
 			if (wc == null) {
 				System.out.println("FAILED!"); 
-				return 1;
+				return Error.CLIMATE_WAKEUP_ERROR;
 			}
 			System.out.println("done");
 			
@@ -170,7 +178,7 @@ public class Orchestrator_part1 {
 			IndoorStatus is = acc.getIndoorStatus(roomId);
 			if (is == null) {
 				System.out.println("FAILED!"); 
-				return 1;
+				return Error.CLIMATE_WAKEUP_ERROR;
 			}
 			System.out.println("done");
 		
@@ -189,7 +197,7 @@ public class Orchestrator_part1 {
 						+ "... ");
 				if (!nc.openWindow(l)) {
 					System.out.println("FAILED!"); 
-					return 1;
+					return Error.CLIMATE_WAKEUP_ERROR;
 				}
 				else
 					System.out.println("done");
@@ -209,7 +217,7 @@ public class Orchestrator_part1 {
 						+ "... ");
 				if (!nc.closeWindow(l)) {
 					System.out.println("FAILED!"); 
-					return 1;
+					return Error.CLIMATE_WAKEUP_ERROR;
 				}
 				else
 					System.out.println("done");
@@ -218,7 +226,7 @@ public class Orchestrator_part1 {
 		}
 			break;
 		}
-		return 0;
+		return Error.SUCCESS;
 	}
 
 	private static float estabilishDesiredCo2level(WeatherCondition wc) {

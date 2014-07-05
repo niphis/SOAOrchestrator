@@ -15,6 +15,40 @@ import com.smartcampus.roomusagedatabase.local.RoomUsageDatabaseService;
 
 public class Orchestrator_part1 {
 
+	public enum WakeReason {
+		DAILY_WAKEUP, 
+		CLIMATE_WAKEUP
+	};
+
+	public enum Error {
+		NO_EVENT, 
+		SUCCESS,
+		DAILY_WAKEUP_ERROR, 
+		CLIMATE_WAKEUP_ERROR, 
+	};
+	
+	private static ArtificialClimateControlService acc;
+	private static NaturalClimateSystemService nc;
+	private static PathsService p;
+	private static RoomUsageDatabaseService rud;
+	
+	public static void setArtificialClimateControlService
+		(ArtificialClimateControlService a) {
+		acc = a;
+	}
+	
+	public static void setNaturalClimateSystemService (NaturalClimateSystemService n) {
+		nc = n;
+	}
+	
+	public static void setPathsService(PathsService ps) {
+		p = ps;
+	}
+	
+	public static void setRoomUsageDatabaseService(RoomUsageDatabaseService r) {
+		rud = r;
+	}
+		
 	private static float estabilishDesiredCo2level(WeatherCondition wc) {
 
 		return Math.min(1000, wc.getCo2level());
@@ -84,32 +118,6 @@ public class Orchestrator_part1 {
 		return true;
 	}
 
-	public enum WakeReason {
-		DAILY_WAKEUP, CLIMATE_WAKEUP
-	};
-
-	public static void setArtificialClimateControlService
-		(ArtificialClimateControlService a) {
-		acc = a;
-	}
-	
-	public static void setNaturalClimateSystemService (NaturalClimateSystemService n) {
-		nc = n;
-	}
-	
-	public static void setPathsService(PathsService ps) {
-		p = ps;
-	}
-	
-	public static void setRoomUsageDatabaseService(RoomUsageDatabaseService r) {
-		rud = r;
-	}
-	
-	private static ArtificialClimateControlService acc;
-	private static NaturalClimateSystemService nc;
-	private static PathsService p;
-	private static RoomUsageDatabaseService rud;
-
 	public static class TimerEvent implements Comparable<TimerEvent> {
 		public WakeReason reason;
 		public Long time;
@@ -135,9 +143,9 @@ public class Orchestrator_part1 {
 		}
 	}
 
-	public static int wakeUp(PriorityQueue<TimerEvent> timers) {
+	public static Error wakeUp(PriorityQueue<TimerEvent> timers) {
 		TimerEvent a = timers.poll();
-		if (a == null) return -1;
+		if (a == null) return Error.NO_EVENT;
 		
 		switch (a.reason) {
 
@@ -203,7 +211,7 @@ public class Orchestrator_part1 {
 			break;
 		}
 		
-		return 0;
+		return Error.SUCCESS;
 	}
 
 	private static void scheduleTimers(PriorityQueue<TimerEvent> timers, EventData ev, String rid) {

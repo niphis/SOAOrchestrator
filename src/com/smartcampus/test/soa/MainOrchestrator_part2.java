@@ -13,6 +13,7 @@ import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
 import com.smartcampus.test.soa.Orchestrator_part2.WakeReason;
+import com.smartcampus.test.soa.Orchestrator_part2.Error;
 import com.smartcampus.test.soa.Orchestrator_part2.TimerEvent;
 
 public class MainOrchestrator_part2 {
@@ -35,14 +36,19 @@ public class MainOrchestrator_part2 {
 	}
 	
 	public static void main(String[] args) {
-		int res;
+		Error res;
 		Orchestrator_part2.setArtificialClimateControlPortType(acc);
 		Orchestrator_part2.setNaturalClimateSystemPortType(nc);
 		Orchestrator_part2.setPathsPortType(p);
 		Orchestrator_part2.setRoomUsageDatabasePortType(rud);
 		Orchestrator_part2.setLuminanceManagementPortType(lm);
 		System.out.println("[ORCH] Start handling of events... ");
-		while ((res = Orchestrator_part2.wakeUp(timers)) != -1);
+		
+		do {
+			res = Orchestrator_part2.wakeUp(timers);
+		}
+		while (res != Error.NO_EVENT);
+		
 		System.out.println("[ORCH] Handling of events completed.");
 
 	}

@@ -28,13 +28,28 @@ import com.smartcampus.servicesfacilities.ServicesAndFacilitiesPortType;
 import com.smartcampus.servicesfacilities.xsd.Food;
 import com.smartcampus.servicesfacilities.xsd.FoodList;
 import com.smartcampus.servicesfacilities.xsd.FoodOrder;
+import com.smartcampus.test.soa.Orchestrator_part2.Error;
 
 public class Orchestrator {
 
 	public static enum WakeReason {
-		DAILY_WAKEUP, CLIMATE_WAKEUP, LUMINANCE_WAKEUP, FOOD_WAKEUP, CLEANING_WAKEUP
+		DAILY_WAKEUP, 
+		CLIMATE_WAKEUP, 
+		LUMINANCE_WAKEUP, 
+		FOOD_WAKEUP, 
+		CLEANING_WAKEUP
 	};
 
+	public enum Error {
+		NO_EVENT, 
+		SUCCESS,
+		DAILY_WAKEUP_ERROR, 
+		CLIMATE_WAKEUP_ERROR, 
+		LUMINANCE_WAKEUP_ERROR,
+		FOOD_WAKEUP_ERROR, 
+		CLEANING_WAKEUP_ERROR
+	};
+	
 	private static ArtificialClimateControlPortType acc;
 	private static NaturalClimateSystemPortType nc;
 	private static PathsPortType p;
@@ -109,9 +124,9 @@ public class Orchestrator {
 		}
 	}
 
-	public static int wakeUp(PriorityQueue<TimerEvent> timers) {
+	public static Error wakeUp(PriorityQueue<TimerEvent> timers) {
 		TimerEvent a = timers.poll();
-		if (a == null) return -1;
+		if (a == null) return Error.NO_EVENT;
 		
 		switch (a.reason) {
 
@@ -150,7 +165,7 @@ public class Orchestrator {
 				List<Integer> pathsToRoom = p.getPaths(room);
 				if (pathsToRoom == null) {
 					System.out.println("FAILED!");
-					return 1;
+					return Error.DAILY_WAKEUP_ERROR;
 				}
 				System.out.println("done");
 				int satisfiedCapacity = 0;
@@ -166,7 +181,7 @@ public class Orchestrator {
 					PathData pd = p.getPathAttributes(pathId);
 					if (pd == null) {
 						System.out.println("FAILED!");
-						return 1;
+						return Error.DAILY_WAKEUP_ERROR;
 					}
 					System.out.println("done");
 					satisfiedCapacity += pd.getCapacity();
@@ -198,7 +213,7 @@ public class Orchestrator {
 			WeatherCondition wc = nc.getWeatherCondition(l);
 			if (wc == null) {
 				System.out.println("FAILED!");
-				return 1;
+				return Error.CLIMATE_WAKEUP_ERROR;
 			}
 			System.out.println("done");
 
@@ -213,7 +228,7 @@ public class Orchestrator {
 			IndoorStatus is = acc.getIndoorStatus(roomId);
 			if (is == null) {
 				System.out.println("FAILED!");
-				return 1;
+				return Error.CLIMATE_WAKEUP_ERROR;
 			}
 			System.out.println("done");
 
@@ -234,7 +249,7 @@ public class Orchestrator {
 						+ "... ");
 				if (!nc.openWindow(l)) {
 					System.out.println("FAILED!");
-					return 1;
+					return Error.CLIMATE_WAKEUP_ERROR;
 				}
 				else
 					System.out.println("done");
@@ -254,7 +269,7 @@ public class Orchestrator {
 						+ "... ");
 				if (!nc.closeWindow(l)){
 					System.out.println("FAILED!");
-					return 1;
+					return Error.CLIMATE_WAKEUP_ERROR;
 				}
 				else
 					System.out.println("done");
@@ -271,110 +286,130 @@ public class Orchestrator {
 			System.out.print("[LM] Getting indoor luminance for room " + roomId
 					+ "... ");
 			float indoorLuminance = lm.getIndoorLuminance(roomId);
-			System.out.println("done");
+			if (indoorLuminance == -1) {
+				System.out.println("FAILED!");
+				return Error.LUMINANCE_WAKEUP_ERROR;
+			}
+			else
+				System.out.println("done");
+			
 			System.out.println("Indoor Luminance: " + indoorLuminance);
 
 			System.out.print("[LM] Getting outdoor luminance for room "
 					+ roomId + "... ");
+			
 			float outdoorLuminance = lm.getOutdoorLuminance(roomId);
-			System.out.println("done");
+			if (outdoorLuminance == -1) {
+				System.out.println("FAILED!");
+				return Error.LUMINANCE_WAKEUP_ERROR;
+			}
+			else
+				System.out.println("done");
+			
 			System.out.println("Outdoor Luminance: " + outdoorLuminance);
 
-			System.out.print("[LM] Getting room settings for room " + roomId
-					+ "... ");
+			System.out.print("[LM] Getting room settings for room "
+					+ roomId + "... ");
 			Room rs = lm.getCurrentRoomSettings(roomId);
-			System.out.println("done");
+			if (rs == null) {
+				System.out.println("FAILED!");
+				return Error.CLIMATE_WAKEUP_ERROR;
+			}
+			else
+				System.out.println("done");
 
-			while (true) {
-
-				if (desiredLuminance > indoorLuminance) {
-					// need to increase luminance
-					if (desiredLuminance < outdoorLuminance) {
-						// use natural system
-						if (rs.getWindows().get(0).getAngle() == 1) { // blind
-							// is up
-							// switch on spotlight
-							for (Spotlight s : rs.getSpotlights()) {
-								s.setLuminance(desiredLuminance);
-								System.out
-										.print("[LM] Calibrating spotlights for room "
-												+ roomId + "... ");
-								lm.calibrateSpotlight(rs);
-								System.out.println("done");
-							}
-
-							break;
-						} else {
-							// blind up
-							for (Window w : rs.getWindows()) {
-								w.setAngle(estabilishAngle(indoorLuminance,
-										outdoorLuminance));
-
-								System.out
-										.print("[LM] Regulating blinds for room "
-												+ roomId + "... ");
-								lm.regulateBlind(rs);
-								System.out.println("done");
-
-								System.out
-										.print("[LM] Getting indoor luminance for room "
-												+ roomId + "... ");
-								indoorLuminance = lm.getIndoorLuminance(roomId);
-								System.out.println("done");
-								System.out.println("Indoor Luminance: "
-										+ indoorLuminance);
-							}
-						}
-					} else {
+			if (desiredLuminance > indoorLuminance) {
+				// need to increase luminance
+				if (desiredLuminance < outdoorLuminance) {
+					// use natural system
+					if (rs.getWindows().get(0).getAngle() == 1) { 
+						// blind is up
 						// switch on spotlight
 						for (Spotlight s : rs.getSpotlights()) {
 							s.setLuminance(desiredLuminance);
 							System.out
-									.print("[LM] Calibrating spotlights for room "
-											+ roomId + "... ");
+							.print("[LM] Calibrating spotlights for room "
+									+ roomId + "... ");
 							lm.calibrateSpotlight(rs);
 							System.out.println("done");
 						}
-						break;
-					}
-				} else {
-					// need to decrease luminance
-					if (rs.getSpotlights().get(0).getLuminance() > 0/*
-																	 * the light
-																	 * is
-																	 * switched
-																	 * on
-																	 */) {
-						// switch off spotligth
-						for (Spotlight s : rs.getSpotlights()) {
-							s.setLuminance(0.0f);
-							System.out
-									.print("[LM] Calibrating spotlights for room "
-											+ roomId + "... ");
-							lm.calibrateSpotlight(rs);
-							System.out.println("done");
-						}
-						System.out
-								.print("[LM] Getting indoor luminance for room "
-										+ roomId + "... ");
-						indoorLuminance = lm.getIndoorLuminance(roomId);
-						System.out.println("done");
-						System.out.println("Indoor Luminance: "
-								+ indoorLuminance);
 
+						break;
 					} else {
-						// blind down
+						// blind is up
 						for (Window w : rs.getWindows()) {
-							w.setAngle(0.0f);
-							System.out.print("[LM] Regulating blinds for room "
+							w.setAngle(estabilishAngle(indoorLuminance,
+									outdoorLuminance));
+
+							System.out
+							.print("[LM] Regulating blinds for room "
 									+ roomId + "... ");
 							lm.regulateBlind(rs);
 							System.out.println("done");
+
+							System.out
+									.print("[LM] Getting indoor luminance for room "
+											+ roomId + "... ");
+							indoorLuminance = lm.getIndoorLuminance(roomId);
+							if (indoorLuminance == -1) {
+								System.out.println("FAILED!");
+								return Error.LUMINANCE_WAKEUP_ERROR;
+							}
+							else
+								System.out.println("done");
+							
+							System.out.println("Indoor Luminance: " + indoorLuminance);
 						}
-						break;
 					}
+				} else {
+					// switch on spotlight
+					for (Spotlight s : rs.getSpotlights()) {
+						s.setLuminance(desiredLuminance);
+						System.out
+						.print("[LM] Calibrating spotlights for room "
+								+ roomId + "... ");
+						lm.calibrateSpotlight(rs);
+						System.out.println("done");
+					}
+					break;
+				}
+			} 
+			/*
+			else {
+				// need to decrease luminance
+				if (rs.getSpotlights().get(0).getLuminance() > 0
+															//the light is switched on
+															 ) {
+					// switch off spotligth
+					for (Spotlight s : rs.getSpotlights()) {
+						s.setLuminance(0.0f);
+						System.out
+						.print("[LM] Calibrating spotlights for room "
+								+ roomId + "... ");
+						lm.calibrateSpotlight(rs);
+						System.out.println("done");
+					}
+					System.out
+							.print("[LM] Getting indoor luminance for room "
+									+ roomId + "... ");
+					indoorLuminance = lm.getIndoorLuminance(roomId);
+					System.out.println("done");
+					System.out.println("Indoor Luminance: " + indoorLuminance);
+
+				} else {
+					// blind down
+					for (Window w : rs.getWindows()) {
+						w.setAngle(0.0f);
+						System.out
+						.print("[LM] Regulating blinds for room "
+								+ roomId + "... ");
+						lm.regulateBlind(rs);
+						System.out.println("done");
+					}
+					break;
 				}
 			}
+			*/
 		}
 			break;
 
@@ -440,7 +475,7 @@ public class Orchestrator {
 		// Input State: expectedPeople
 		case CLEANING_WAKEUP: {
 
-			// set the correct level of servicies and facilities based on
+			// set the correct level of services and facilities based on
 			// the
 			// event
 			int LMThreshold = 50;
@@ -463,7 +498,7 @@ public class Orchestrator {
 		}
 			break;
 		}
-		return 0;
+		return Error.SUCCESS;
 	}
 
 	private static float estabilishDesiredCo2level(WeatherCondition wc) {

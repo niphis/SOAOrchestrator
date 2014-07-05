@@ -28,7 +28,17 @@ import com.smartcampus.test.soa.Orchestrator_part1.TimerEvent;
 public class Orchestrator_part2 {
 
 	public enum WakeReason {
-		DAILY_WAKEUP, CLIMATE_WAKEUP, LUMINANCE_WAKEUP
+		DAILY_WAKEUP, 
+		CLIMATE_WAKEUP, 
+		LUMINANCE_WAKEUP
+	};
+	
+	public enum Error {
+		NO_EVENT, 
+		SUCCESS,
+		DAILY_WAKEUP_ERROR, 
+		CLIMATE_WAKEUP_ERROR, 
+		LUMINANCE_WAKEUP_ERROR
 	};
 
 	private static ArtificialClimateControlPortType acc;
@@ -87,9 +97,9 @@ public class Orchestrator_part2 {
 		}
 	}
 
-	public static int wakeUp(PriorityQueue<TimerEvent> timers) {
+	public static Error wakeUp(PriorityQueue<TimerEvent> timers) {
 		TimerEvent a = timers.poll();
-		if (a == null) return -1;
+		if (a == null) return Error.NO_EVENT;
 		
 		switch (a.reason) {
 
@@ -117,7 +127,7 @@ public class Orchestrator_part2 {
 				List<Integer> pathsToRoom = p.getPaths(room);
 				if (pathsToRoom == null) {
 					System.out.println("FAILED!");
-					return 1;
+					return Error.DAILY_WAKEUP_ERROR;
 				}
 				System.out.println("done");
 				int satisfiedCapacity = 0;
@@ -133,7 +143,7 @@ public class Orchestrator_part2 {
 					PathData pd = p.getPathAttributes(pathId);
 					if (pd == null) {
 						System.out.println("FAILED!");
-						return 1;
+						return Error.DAILY_WAKEUP_ERROR;
 					}
 					System.out.println("done");
 					satisfiedCapacity += pd.getCapacity();
@@ -161,7 +171,7 @@ public class Orchestrator_part2 {
 			WeatherCondition wc = nc.getWeatherCondition(l);
 			if (wc == null) {
 				System.out.println("FAILED!");
-				return 1;
+				return Error.CLIMATE_WAKEUP_ERROR;
 			}
 			System.out.println("done");
 
@@ -178,7 +188,7 @@ public class Orchestrator_part2 {
 			IndoorStatus is = acc.getIndoorStatus(roomId);
 			if (is == null) {
 				System.out.println("FAILED!");
-				return 1;
+				return Error.CLIMATE_WAKEUP_ERROR;
 			}
 			System.out.println("done");
 
@@ -195,8 +205,10 @@ public class Orchestrator_part2 {
 			if (naturalClimateUsable(desiredTemperature, desiredHumidity, desiredCo2level, is, wc)) {
 				System.out.print("[NC] Opening windows in room " + roomId
 						+ "... ");
-				if (!nc.openWindow(l))
+				if (!nc.openWindow(l)) {
 					System.out.println("FAILED!");
+					return Error.CLIMATE_WAKEUP_ERROR;
+				}
 				else
 					System.out.println("done");
 			} else {
@@ -213,8 +225,10 @@ public class Orchestrator_part2 {
 
 				System.out.print("[NC] Closing windows in room " + roomId
 						+ "... ");
-				if (!nc.closeWindow(l))
+				if (!nc.closeWindow(l)) {
 					System.out.println("FAILED!");
+					return Error.CLIMATE_WAKEUP_ERROR;
+				}
 				else
 					System.out.println("done");
 
@@ -230,19 +244,37 @@ public class Orchestrator_part2 {
 			System.out.print("[LM] Getting indoor luminance for room " + roomId
 					+ "... ");
 			float indoorLuminance = lm.getIndoorLuminance(roomId);
-			System.out.println("done");
+			if (indoorLuminance == -1) {
+				System.out.println("FAILED!");
+				return Error.LUMINANCE_WAKEUP_ERROR;
+			}
+			else
+				System.out.println("done");
+			
 			System.out.println("Indoor Luminance: " + indoorLuminance);
 
 			System.out.print("[LM] Getting outdoor luminance for room "
 					+ roomId + "... ");
+			
 			float outdoorLuminance = lm.getOutdoorLuminance(roomId);
-			System.out.println("done");
+			if (outdoorLuminance == -1) {
+				System.out.println("FAILED!");
+				return Error.LUMINANCE_WAKEUP_ERROR;
+			}
+			else
+				System.out.println("done");
+			
 			System.out.println("Outdoor Luminance: " + outdoorLuminance);
 
 			System.out.print("[LM] Getting room settings for room "
 					+ roomId + "... ");
 			Room rs = lm.getCurrentRoomSettings(roomId);
-			System.out.println("done");
+			if (rs == null) {
+				System.out.println("FAILED!");
+				return Error.CLIMATE_WAKEUP_ERROR;
+			}
+			else
+				System.out.println("done");
 
 
 			while (true) {
@@ -251,8 +283,8 @@ public class Orchestrator_part2 {
 					// need to increase luminance
 					if (desiredLuminance < outdoorLuminance) {
 						// use natural system
-						if (rs.getWindows().get(0).getAngle() == 1) { // blind
-							// is up
+						if (rs.getWindows().get(0).getAngle() == 1) { 
+							// blind is up
 							// switch on spotlight
 							for (Spotlight s : rs.getSpotlights()) {
 								s.setLuminance(desiredLuminance);
@@ -265,7 +297,7 @@ public class Orchestrator_part2 {
 
 							break;
 						} else {
-							// blind up
+							// blind is up
 							for (Window w : rs.getWindows()) {
 								w.setAngle(estabilishAngle(indoorLuminance,
 										outdoorLuminance));
@@ -280,7 +312,13 @@ public class Orchestrator_part2 {
 										.print("[LM] Getting indoor luminance for room "
 												+ roomId + "... ");
 								indoorLuminance = lm.getIndoorLuminance(roomId);
-								System.out.println("done");
+								if (indoorLuminance == -1) {
+									System.out.println("FAILED!");
+									return Error.LUMINANCE_WAKEUP_ERROR;
+								}
+								else
+									System.out.println("done");
+								
 								System.out.println("Indoor Luminance: " + indoorLuminance);
 							}
 						}
@@ -296,12 +334,13 @@ public class Orchestrator_part2 {
 						}
 						break;
 					}
-				} else {
+				} 
+				/*
+				else {
 					// need to decrease luminance
-					if (rs.getSpotlights().get(0).getLuminance() > 0/*
-																 * the light is
-																 * switched on
-																 */) {
+					if (rs.getSpotlights().get(0).getLuminance() > 0
+																//the light is switched on
+																 ) {
 						// switch off spotligth
 						for (Spotlight s : rs.getSpotlights()) {
 							s.setLuminance(0.0f);
@@ -331,11 +370,12 @@ public class Orchestrator_part2 {
 						break;
 					}
 				}
+				*/
 			}
 		}
 			break;
 		}
-		return 0;
+		return Error.SUCCESS;
 	}
 
 	private static float estabilishDesiredCo2level(WeatherCondition wc) {
