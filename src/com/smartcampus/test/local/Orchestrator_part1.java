@@ -84,16 +84,33 @@ public class Orchestrator_part1 {
 		return true;
 	}
 
-	private enum WakeReason {
+	public enum WakeReason {
 		DAILY_WAKEUP, CLIMATE_WAKEUP
 	};
 
+	public static void setArtificialClimateControlService
+		(ArtificialClimateControlService a) {
+		acc = a;
+	}
+	
+	public static void setNaturalClimateSystemService (NaturalClimateSystemService n) {
+		nc = n;
+	}
+	
+	public static void setPathsService(PathsService ps) {
+		p = ps;
+	}
+	
+	public static void setRoomUsageDatabaseService(RoomUsageDatabaseService r) {
+		rud = r;
+	}
+	
 	private static ArtificialClimateControlService acc;
 	private static NaturalClimateSystemService nc;
 	private static PathsService p;
 	private static RoomUsageDatabaseService rud;
 
-	private static class TimerEvent implements Comparable<TimerEvent> {
+	public static class TimerEvent implements Comparable<TimerEvent> {
 		public WakeReason reason;
 		public Long time;
 		public EventData event;
@@ -118,21 +135,10 @@ public class Orchestrator_part1 {
 		}
 	}
 
-	private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
-
-	static {
-		acc = new ArtificialClimateControlService();
-		nc = new NaturalClimateSystemService();
-		p = new PathsService();
-		rud = new RoomUsageDatabaseService();
-
-		// INITIAL EVENT SCHEDULING
-		TimerEvent a = new TimerEvent(WakeReason.DAILY_WAKEUP);
-
-		timers.add(a);
-	}
-
-	private static void wakeUp(TimerEvent a) {
+	public static int wakeUp(PriorityQueue<TimerEvent> timers) {
+		TimerEvent a = timers.poll();
+		if (a == null) return -1;
+		
 		switch (a.reason) {
 
 		case DAILY_WAKEUP:
@@ -159,7 +165,7 @@ public class Orchestrator_part1 {
 							.getComponents();
 					for (int r = 0; r < componentArray.length; r++) {
 						String rid = componentArray[r].getId();
-						scheduleTimers(event, rid);
+						scheduleTimers(timers, event, rid);
 					}
 				}
 			}
@@ -196,9 +202,11 @@ public class Orchestrator_part1 {
 
 			break;
 		}
+		
+		return 0;
 	}
 
-	private static void scheduleTimers(EventData ev, String rid) {
+	private static void scheduleTimers(PriorityQueue<TimerEvent> timers, EventData ev, String rid) {
 
 		// CLIMATE_WAKEUP scheduling
 		TimerEvent a = new TimerEvent(WakeReason.CLIMATE_WAKEUP,
@@ -207,9 +215,4 @@ public class Orchestrator_part1 {
 		timers.add(a);
 	}
 
-	public static void main(String[] args) {
-		TimerEvent timerEvent;
-		while ((timerEvent = timers.poll()) != null)
-			wakeUp(timerEvent);
-	}
 }

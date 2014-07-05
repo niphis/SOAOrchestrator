@@ -31,7 +31,7 @@ import com.smartcampus.servicesfacilities.xsd.FoodOrder;
 
 public class Orchestrator {
 
-	private static enum WakeReason {
+	public static enum WakeReason {
 		DAILY_WAKEUP, CLIMATE_WAKEUP, LUMINANCE_WAKEUP, FOOD_WAKEUP, CLEANING_WAKEUP
 	};
 
@@ -42,6 +42,31 @@ public class Orchestrator {
 	private static LuminanceManagementPortType lm;
 	private static ServicesAndFacilitiesPortType sf;
 
+	public static void setArtificialClimateControlPortType
+		(ArtificialClimateControlPortType a) {
+		acc = a;
+	}
+	
+	public static void setNaturalClimateSystemPortType (NaturalClimateSystemPortType n) {
+		nc = n;
+	}
+	
+	public static void setPathsPortType(PathsPortType ps) {
+		p = ps;
+	}
+	
+	public static void setRoomUsageDatabasePortType(RoomUsageDatabasePortType r) {
+		rud = r;
+	}
+	
+	public static void setLuminanceManagementPortType(LuminanceManagementPortType l) {
+		lm = l;
+	}
+	
+	public static void setServicesAndFacilitiesPortType(ServicesAndFacilitiesPortType s) {
+		sf = s;
+	}
+	
 	private static com.smartcampus.naturalclimatesystem.xsd.ObjectFactory ncsObjFactory = new com.smartcampus.naturalclimatesystem.xsd.ObjectFactory();
 	private static com.smartcampus.acc.xsd.ObjectFactory accObjFactory = new com.smartcampus.acc.xsd.ObjectFactory();
 	// private static com.smartcampus.luminancemanagement.xsd.ObjectFactory
@@ -49,7 +74,7 @@ public class Orchestrator {
 	// com.smartcampus.luminancemanagement.xsd.ObjectFactory();
 	private static com.smartcampus.servicesfacilities.xsd.ObjectFactory sfObjFactory = new com.smartcampus.servicesfacilities.xsd.ObjectFactory();
 
-	private static class TimerEvent implements Comparable<TimerEvent> {
+	public static class TimerEvent implements Comparable<TimerEvent> {
 		public WakeReason reason;
 		public Long time;
 		public EventData event;
@@ -84,27 +109,10 @@ public class Orchestrator {
 		}
 	}
 
-	private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
-
-	static {
-		acc = new ArtificialClimateControl()
-				.getArtificialClimateControlHttpSoap11Endpoint();
-		nc = new NaturalClimateSystem()
-				.getNaturalClimateSystemHttpSoap11Endpoint();
-		p = new Paths().getPathsHttpSoap11Endpoint();
-		rud = new RoomUsageDatabase().getRoomUsageDatabaseHttpSoap11Endpoint();
-		lm = new LuminanceManagement()
-				.getLuminanceManagementHttpSoap11Endpoint();
-		sf = new ServicesAndFacilities()
-				.getServicesAndFacilitiesHttpSoap11Endpoint();
-
-		// INITIAL EVENT SCHEDULING
-		TimerEvent a = new TimerEvent(WakeReason.DAILY_WAKEUP);
-
-		timers.add(a);
-	}
-
-	private static void wakeUp(TimerEvent a) {
+	public static int wakeUp(PriorityQueue<TimerEvent> timers) {
+		TimerEvent a = timers.poll();
+		if (a == null) return -1;
+		
 		switch (a.reason) {
 
 		case DAILY_WAKEUP: {
@@ -136,13 +144,13 @@ public class Orchestrator {
 						* 60 * 24)
 					continue;
 
-				scheduleEventTimers(event, room);
+				scheduleEventTimers(timers, event, room);
 
 				System.out.print("[P] Getting paths to room " + room + "... ");
 				List<Integer> pathsToRoom = p.getPaths(room);
 				if (pathsToRoom == null) {
 					System.out.println("FAILED!");
-					break;
+					return 1;
 				}
 				System.out.println("done");
 				int satisfiedCapacity = 0;
@@ -158,7 +166,7 @@ public class Orchestrator {
 					PathData pd = p.getPathAttributes(pathId);
 					if (pd == null) {
 						System.out.println("FAILED!");
-						break;
+						return 1;
 					}
 					System.out.println("done");
 					satisfiedCapacity += pd.getCapacity();
@@ -166,13 +174,13 @@ public class Orchestrator {
 							.getValue().getComponents();
 					for (int r = 0; r < componentArray.size(); r++) {
 						String rid = componentArray.get(r).getId().getValue();
-						scheduleTimers(event, rid);
+						scheduleTimers(timers, event, rid);
 					}
 				}
 			}
 
 			// schedule food order for next weeks events
-			scheduleFoodTimer(events);
+			scheduleFoodTimer(timers, events);
 
 		}
 			break;
@@ -190,7 +198,7 @@ public class Orchestrator {
 			WeatherCondition wc = nc.getWeatherCondition(l);
 			if (wc == null) {
 				System.out.println("FAILED!");
-				break;
+				return 1;
 			}
 			System.out.println("done");
 
@@ -205,7 +213,7 @@ public class Orchestrator {
 			IndoorStatus is = acc.getIndoorStatus(roomId);
 			if (is == null) {
 				System.out.println("FAILED!");
-				break;
+				return 1;
 			}
 			System.out.println("done");
 
@@ -224,8 +232,10 @@ public class Orchestrator {
 					desiredCo2level, is, wc)) {
 				System.out.print("[NC] Opening windows in room " + roomId
 						+ "... ");
-				if (!nc.openWindow(l))
+				if (!nc.openWindow(l)) {
 					System.out.println("FAILED!");
+					return 1;
+				}
 				else
 					System.out.println("done");
 			} else {
@@ -242,8 +252,10 @@ public class Orchestrator {
 
 				System.out.print("[NC] Closing windows in room " + roomId
 						+ "... ");
-				if (!nc.closeWindow(l))
+				if (!nc.closeWindow(l)){
 					System.out.println("FAILED!");
+					return 1;
+				}
 				else
 					System.out.println("done");
 
@@ -451,6 +463,7 @@ public class Orchestrator {
 		}
 			break;
 		}
+		return 0;
 	}
 
 	private static float estabilishDesiredCo2level(WeatherCondition wc) {
@@ -531,7 +544,7 @@ public class Orchestrator {
 		return 1;
 	}
 
-	private static void scheduleTimers(EventData ev, String rid) {
+	private static void scheduleTimers(PriorityQueue<TimerEvent> timers, EventData ev, String rid) {
 		TimerEvent a;
 
 		// CLIMATE_WAKEUP scheduling
@@ -545,10 +558,10 @@ public class Orchestrator {
 		timers.add(a);
 	}
 
-	private static void scheduleEventTimers(EventData ev, String rid) {
+	private static void scheduleEventTimers(PriorityQueue<TimerEvent> timers, EventData ev, String rid) {
 		TimerEvent a;
 
-		scheduleTimers(ev, rid);
+		scheduleTimers(timers, ev, rid);
 
 		// CLEANING_WAKEUP scheduling
 		a = new TimerEvent(WakeReason.CLEANING_WAKEUP, ev.getStartTime(), ev,
@@ -556,7 +569,7 @@ public class Orchestrator {
 		timers.add(a);
 	}
 
-	private static void scheduleFoodTimer(List<EventData> events) {
+	private static void scheduleFoodTimer(PriorityQueue<TimerEvent> timers, List<EventData> events) {
 		TimerEvent a;
 
 		// FOOD_WAKEUP scheduling
@@ -565,12 +578,4 @@ public class Orchestrator {
 		timers.add(a);
 	}
 
-	public static void main(String[] args) {
-		TimerEvent timerEvent;
-		System.out.println("[ORCH] Start handling of events... ");
-		while ((timerEvent = timers.poll()) != null)
-			wakeUp(timerEvent);
-		System.out.println("[ORCH] Handling of events completed.");
-
-	}
 }

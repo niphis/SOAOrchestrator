@@ -6,22 +6,26 @@ import java.util.PriorityQueue;
 
 import com.smartcampus.acc.ArtificialClimateControl;
 import com.smartcampus.acc.ArtificialClimateControlPortType;
+import com.smartcampus.acc.local.ArtificialClimateControlService;
 import com.smartcampus.acc.xsd.IndoorStatus;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
+import com.smartcampus.naturalclimatesystem.local.NaturalClimateSystemService;
 import com.smartcampus.naturalclimatesystem.xsd.Location;
 import com.smartcampus.naturalclimatesystem.xsd.WeatherCondition;
 import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
+import com.smartcampus.paths.local.PathsService;
 import com.smartcampus.paths.xsd.PathComponent;
 import com.smartcampus.paths.xsd.PathData;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
+import com.smartcampus.roomusagedatabase.local.RoomUsageDatabaseService;
 import com.smartcampus.roomusagedatabase.xsd.EventData;
 
 public class Orchestrator_part1 {
 
-	private enum WakeReason {
+	public enum WakeReason {
 		DAILY_WAKEUP, CLIMATE_WAKEUP
 	};
 
@@ -30,11 +34,27 @@ public class Orchestrator_part1 {
 	private static PathsPortType p;
 	private static RoomUsageDatabasePortType rud;
 
-
+	public static void setArtificialClimateControlPortType
+		(ArtificialClimateControlPortType a) {
+		acc = a;
+	}
+	
+	public static void setNaturalClimateSystemPortType (NaturalClimateSystemPortType n) {
+		nc = n;
+	}
+	
+	public static void setPathsPortType(PathsPortType ps) {
+		p = ps;
+	}
+	
+	public static void setRoomUsageDatabasePortType(RoomUsageDatabasePortType r) {
+		rud = r;
+	}
+	
 	private static com.smartcampus.naturalclimatesystem.xsd.ObjectFactory ncsObjFactory = new com.smartcampus.naturalclimatesystem.xsd.ObjectFactory();
 	private static com.smartcampus.acc.xsd.ObjectFactory accObjFactory = new com.smartcampus.acc.xsd.ObjectFactory();
 
-	private static class TimerEvent implements Comparable<TimerEvent> {
+	public static class TimerEvent implements Comparable<TimerEvent> {
 		public WakeReason reason;
 		public Long time;
 		public EventData event;
@@ -59,24 +79,10 @@ public class Orchestrator_part1 {
 		}
 	}
 
-	private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
-
-	static {
-
-		acc = new ArtificialClimateControl()
-				.getArtificialClimateControlHttpSoap11Endpoint();
-		nc = new NaturalClimateSystem()
-				.getNaturalClimateSystemHttpSoap11Endpoint();
-		p = new Paths().getPathsHttpSoap11Endpoint();
-		rud = new RoomUsageDatabase().getRoomUsageDatabaseHttpSoap11Endpoint();
-
-		// INITIAL EVENT SCHEDULING
-		TimerEvent a = new TimerEvent(WakeReason.DAILY_WAKEUP);
-
-		timers.add(a);
-	}
-
-	private static void wakeUp(TimerEvent a) {
+	public static int wakeUp(PriorityQueue<TimerEvent> timers) {
+		TimerEvent a = timers.poll();
+		if (a == null) return -1;
+		
 		switch (a.reason) {
 
 		case DAILY_WAKEUP: {
@@ -97,13 +103,13 @@ public class Orchestrator_part1 {
 						+ "\n\tfrom " + new Date(event.getStartTime())
 						+ "\n\tto " + new Date(event.getEndTime()));
 				
-				scheduleTimers(event, room);
+				scheduleTimers(timers, event, room);
 				
 				System.out.print("[P] Getting paths to room " + room + "... ");
 				List<Integer> pathsToRoom = p.getPaths(room);
 				if (pathsToRoom == null) {
-					System.out.println("FAILED!");
-					break;
+					System.out.println("FAILED!"); 
+					return 1;
 				}
 				System.out.println("done");
 				int satisfiedCapacity = 0;
@@ -118,8 +124,8 @@ public class Orchestrator_part1 {
 							+ pathId + "... ");
 					PathData pd = p.getPathAttributes(pathId);
 					if (pd == null) {
-						System.out.println("FAILED!");
-						break;
+						System.out.println("FAILED!"); 
+						return 1;
 					}
 					System.out.println("done");
 					satisfiedCapacity += pd.getCapacity();
@@ -127,7 +133,7 @@ public class Orchestrator_part1 {
 							.getValue().getComponents();
 					for (int r = 0; r < componentArray.size(); r++) {
 						String rid = componentArray.get(r).getId().getValue();
-						scheduleTimers(event, rid);
+						scheduleTimers(timers, event, rid);
 					}
 				}
 			}
@@ -146,8 +152,8 @@ public class Orchestrator_part1 {
 					+ roomId + "... ");
 			WeatherCondition wc = nc.getWeatherCondition(l);
 			if (wc == null) {
-				System.out.println("FAILED!");
-				break;
+				System.out.println("FAILED!"); 
+				return 1;
 			}
 			System.out.println("done");
 			
@@ -163,8 +169,8 @@ public class Orchestrator_part1 {
 			
 			IndoorStatus is = acc.getIndoorStatus(roomId);
 			if (is == null) {
-				System.out.println("FAILED!");
-				break;
+				System.out.println("FAILED!"); 
+				return 1;
 			}
 			System.out.println("done");
 		
@@ -181,8 +187,10 @@ public class Orchestrator_part1 {
 			if (naturalClimateUsable(desiredTemperature, desiredHumidity, desiredCo2level, is, wc)) {
 				System.out.print("[NC] Opening windows in room " + roomId
 						+ "... ");
-				if (!nc.openWindow(l))
-					System.out.println("FAILED!");
+				if (!nc.openWindow(l)) {
+					System.out.println("FAILED!"); 
+					return 1;
+				}
 				else
 					System.out.println("done");
 			} else {
@@ -199,8 +207,10 @@ public class Orchestrator_part1 {
 
 				System.out.print("[NC] Closing windows in room " + roomId
 						+ "... ");
-				if (!nc.closeWindow(l))
-					System.out.println("FAILED!");
+				if (!nc.closeWindow(l)) {
+					System.out.println("FAILED!"); 
+					return 1;
+				}
 				else
 					System.out.println("done");
 
@@ -208,6 +218,7 @@ public class Orchestrator_part1 {
 		}
 			break;
 		}
+		return 0;
 	}
 
 	private static float estabilishDesiredCo2level(WeatherCondition wc) {
@@ -280,19 +291,11 @@ public class Orchestrator_part1 {
 		return true;
 	}
 
-	private static void scheduleTimers(EventData ev, String rid) {
+	private static void scheduleTimers(PriorityQueue<TimerEvent> timers, EventData ev, String rid) {
 		// CLIMATE_WAKEUP scheduling
 		TimerEvent a = new TimerEvent(WakeReason.CLIMATE_WAKEUP,
 				ev.getStartTime(), ev, rid);
 		timers.add(a);
 	}
 
-	public static void main(String[] args) {
-		TimerEvent timerEvent;
-		System.out.println("[ORCH] Start handling of events... ");
-		while ((timerEvent = timers.poll()) != null)
-			wakeUp(timerEvent);
-		System.out.println("[ORCH] Handling of events completed.");
-		
-	}
 }
