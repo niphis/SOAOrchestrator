@@ -572,9 +572,9 @@ public class Orchestrator {
 	private static void scheduleTimers(PriorityQueue<TimerEvent> timers,
 			EventData ev, String rid) {
 		TimerEvent a;
-
+		
 		// CLIMATE_WAKEUP scheduling
-		a = new TimerEvent(WakeReason.CLIMATE_WAKEUP, ev.getStartTime(), ev,
+		a = new TimerEvent(WakeReason.CLIMATE_WAKEUP, ev.getStartTime() - 3*60*60*1000, ev,
 				rid);
 		timers.add(a);
 
@@ -591,7 +591,7 @@ public class Orchestrator {
 		scheduleTimers(timers, ev, rid);
 
 		// CLEANING_WAKEUP scheduling
-		a = new TimerEvent(WakeReason.CLEANING_WAKEUP, ev.getStartTime(), ev,
+		a = new TimerEvent(WakeReason.CLEANING_WAKEUP, ev.getStartTime() - 2*60*60*1000, ev,
 				rid);
 		timers.add(a);
 	}

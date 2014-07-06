@@ -428,14 +428,13 @@ public class Orchestrator_part2 {
 
 		// CLIMATE_WAKEUP scheduling
 		TimerEvent a = new TimerEvent(WakeReason.CLIMATE_WAKEUP,
-				ev.getStartTime(), ev, rid);
+				ev.getStartTime() - 3*60*60*1000, ev, rid);
 		timers.add(a);
 
 		// LUMINANCE_WAKEUP scheduling
 		a = new TimerEvent(WakeReason.LUMINANCE_WAKEUP, ev.getStartTime(), ev,
 				rid);
 		timers.add(a);
-
 	}
 
 }

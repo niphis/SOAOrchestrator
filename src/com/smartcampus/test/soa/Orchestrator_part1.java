@@ -308,7 +308,7 @@ public class Orchestrator_part1 {
 	private static void scheduleTimers(PriorityQueue<TimerEvent> timers, EventData ev, String rid) {
 		// CLIMATE_WAKEUP scheduling
 		TimerEvent a = new TimerEvent(WakeReason.CLIMATE_WAKEUP,
-				ev.getStartTime(), ev, rid);
+				ev.getStartTime() - 3*60*60*1000, ev, rid);
 		timers.add(a);
 	}
 
