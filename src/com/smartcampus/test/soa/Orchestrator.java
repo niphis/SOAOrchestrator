@@ -28,23 +28,13 @@ import com.smartcampus.servicesfacilities.xsd.FoodOrder;
 public class Orchestrator {
 
 	public static enum WakeReason {
-		DAILY_WAKEUP, 
-		CLIMATE_WAKEUP, 
-		LUMINANCE_WAKEUP, 
-		FOOD_WAKEUP, 
-		CLEANING_WAKEUP
+		DAILY_WAKEUP, CLIMATE_WAKEUP, LUMINANCE_WAKEUP, FOOD_WAKEUP, CLEANING_WAKEUP
 	};
 
 	public enum Error {
-		NO_EVENT, 
-		SUCCESS,
-		DAILY_WAKEUP_ERROR, 
-		CLIMATE_WAKEUP_ERROR, 
-		LUMINANCE_WAKEUP_ERROR,
-		FOOD_WAKEUP_ERROR, 
-		CLEANING_WAKEUP_ERROR
+		NO_EVENT, SUCCESS, DAILY_WAKEUP_ERROR, CLIMATE_WAKEUP_ERROR, LUMINANCE_WAKEUP_ERROR, FOOD_WAKEUP_ERROR, CLEANING_WAKEUP_ERROR
 	};
-	
+
 	private static ArtificialClimateControlPortType acc;
 	private static NaturalClimateSystemPortType nc;
 	private static PathsPortType p;
@@ -52,31 +42,34 @@ public class Orchestrator {
 	private static LuminanceManagementPortType lm;
 	private static ServicesAndFacilitiesPortType sf;
 
-	public static void setArtificialClimateControlPortType
-		(ArtificialClimateControlPortType a) {
+	public static void setArtificialClimateControlPortType(
+			ArtificialClimateControlPortType a) {
 		acc = a;
 	}
-	
-	public static void setNaturalClimateSystemPortType (NaturalClimateSystemPortType n) {
+
+	public static void setNaturalClimateSystemPortType(
+			NaturalClimateSystemPortType n) {
 		nc = n;
 	}
-	
+
 	public static void setPathsPortType(PathsPortType ps) {
 		p = ps;
 	}
-	
+
 	public static void setRoomUsageDatabasePortType(RoomUsageDatabasePortType r) {
 		rud = r;
 	}
-	
-	public static void setLuminanceManagementPortType(LuminanceManagementPortType l) {
+
+	public static void setLuminanceManagementPortType(
+			LuminanceManagementPortType l) {
 		lm = l;
 	}
-	
-	public static void setServicesAndFacilitiesPortType(ServicesAndFacilitiesPortType s) {
+
+	public static void setServicesAndFacilitiesPortType(
+			ServicesAndFacilitiesPortType s) {
 		sf = s;
 	}
-	
+
 	private static com.smartcampus.naturalclimatesystem.xsd.ObjectFactory ncsObjFactory = new com.smartcampus.naturalclimatesystem.xsd.ObjectFactory();
 	private static com.smartcampus.acc.xsd.ObjectFactory accObjFactory = new com.smartcampus.acc.xsd.ObjectFactory();
 	// private static com.smartcampus.luminancemanagement.xsd.ObjectFactory
@@ -121,8 +114,9 @@ public class Orchestrator {
 
 	public static Error wakeUp(PriorityQueue<TimerEvent> timers) {
 		TimerEvent a = timers.poll();
-		if (a == null) return Error.NO_EVENT;
-		
+		if (a == null)
+			return Error.NO_EVENT;
+
 		switch (a.reason) {
 
 		case DAILY_WAKEUP: {
@@ -183,7 +177,8 @@ public class Orchestrator {
 					List<PathComponent> componentArray = pd.getPath()
 							.getValue().getComponents();
 					for (int r = 0; r < componentArray.size(); r++) {
-						String rid = componentArray.get(r).getRoomId().getValue();
+						String rid = componentArray.get(r).getRoomId()
+								.getValue();
 						scheduleTimers(timers, event, rid);
 					}
 				}
@@ -212,12 +207,10 @@ public class Orchestrator {
 			}
 			System.out.println("done");
 
-			System.out.println("Outdoor Conditions:"
-					+ "\n\t Temperature = " + wc.getTemperature()
-					+ "\n\t Humidity = " + wc.getHumidity()
-					+ "\n\t CO2 Level = " + wc.getCo2Level()
+			System.out.println("Outdoor Conditions:" + "\n\t Temperature = "
+					+ wc.getTemperature() + "\n\t Humidity = "
+					+ wc.getHumidity() + "\n\t CO2 Level = " + wc.getCo2Level()
 					+ "\n\t Noise Level = " + wc.getNoiseLevel());
-
 
 			System.out.print("[AC] Getting indoor status for room " + roomId
 					+ "... ");
@@ -229,27 +222,28 @@ public class Orchestrator {
 			}
 			System.out.println("done");
 
-			System.out.println("Indoor Status:"
-					+ "\n\t Temperature = " + is.getTemperature()
-					+ "\n\t Humidity = " + is.getHumidity()
-					+ "\n\t CO2 Level = " + is.getCo2Level());
+			System.out
+					.println("Indoor Status:" + "\n\t Temperature = "
+							+ is.getTemperature() + "\n\t Humidity = "
+							+ is.getHumidity() + "\n\t CO2 Level = "
+							+ is.getCo2Level());
 
 			float desiredTemperature = establishDesiredTemperature(wc);
 			float desiredHumidity = establishDesiredHumidity(is);
 			float desiredCo2level = establishDesiredCo2level(wc);
-			
+
 			if (!valuesOutOfRange(is, wc))
 				break;
 
 			// choose if use natural or artificial climate control system
-			if (naturalClimateUsable(desiredTemperature, desiredHumidity, desiredCo2level, is, wc)) {
+			if (naturalClimateUsable(desiredTemperature, desiredHumidity,
+					desiredCo2level, is, wc)) {
 				System.out.print("[NC] Opening windows in room " + roomId
 						+ "... ");
 				if (!nc.openWindow(l)) {
 					System.out.println("FAILED!");
 					return Error.CLIMATE_WAKEUP_ERROR;
-				}
-				else
+				} else
 					System.out.println("done");
 			} else {
 
@@ -268,14 +262,13 @@ public class Orchestrator {
 				if (!nc.closeWindow(l)) {
 					System.out.println("FAILED!");
 					return Error.CLIMATE_WAKEUP_ERROR;
-				}
-				else
+				} else
 					System.out.println("done");
 
 			}
 		}
 			break;
-			
+
 		case LUMINANCE_WAKEUP: {
 			String roomId = a.room;
 
@@ -288,36 +281,33 @@ public class Orchestrator {
 			if (indoorLuminance == -1) {
 				System.out.println("FAILED!");
 				return Error.LUMINANCE_WAKEUP_ERROR;
-			}
-			else
+			} else
 				System.out.println("done");
-			
+
 			System.out.println("Indoor Luminance: " + indoorLuminance);
-			
+
 			if (desiredLuminance < indoorLuminance)
 				break;
 
 			System.out.print("[LM] Getting outdoor luminance for room "
 					+ roomId + "... ");
-			
+
 			float outdoorLuminance = lm.getOutdoorLuminance(roomId);
 			if (outdoorLuminance == -1) {
 				System.out.println("FAILED!");
 				return Error.LUMINANCE_WAKEUP_ERROR;
-			}
-			else
+			} else
 				System.out.println("done");
-			
+
 			System.out.println("Outdoor Luminance: " + outdoorLuminance);
 
-			System.out.print("[LM] Getting room settings for room "
-					+ roomId + "... ");
+			System.out.print("[LM] Getting room settings for room " + roomId
+					+ "... ");
 			Room rs = lm.getCurrentRoomSettings(roomId);
 			if (rs == null) {
 				System.out.println("FAILED!");
 				return Error.CLIMATE_WAKEUP_ERROR;
-			}
-			else
+			} else
 				System.out.println("done");
 
 			while (desiredLuminance > indoorLuminance) {
@@ -380,13 +370,13 @@ public class Orchestrator {
 
 		case FOOD_WAKEUP: {
 			// set the correct level of food
-			
+
 			HashMap<String, Float> map = estalishFoodNeeds(a.weekEvents);
-			
+
 			System.out.println("Food needs:");
-			for (Entry<String, Float> f: map.entrySet())
+			for (Entry<String, Float> f : map.entrySet())
 				System.out.println("\t" + f.getKey() + " = " + f.getValue());
-			
+
 			System.out.print("[SF] Getting food stocks... ");
 			FoodList fl = sf.getFoodStocks();
 			System.out.println("done");
@@ -400,7 +390,8 @@ public class Orchestrator {
 				System.out.println("\t" + food.getLabel().getValue() + " "
 						+ food.getQuantity());
 
-				int neededQuantity = map.get(food.getLabel().getValue()).intValue();
+				int neededQuantity = map.get(food.getLabel().getValue())
+						.intValue();
 
 				if (food.getQuantity() < neededQuantity) {
 					int quantityToOrder = neededQuantity - food.getQuantity();
@@ -410,12 +401,12 @@ public class Orchestrator {
 			}
 			FoodOrder fo = new FoodOrder();
 			fo.setFoodList(sfObjFactory.createFoodOrderFoodList(fl));
-			
+
 			System.out.println("Food order:");
-			for(Food food: ff)
+			for (Food food : ff)
 				System.out.println("\t" + food.getLabel().getValue() + " "
 						+ food.getQuantity());
-			
+
 			System.out.print("[SF] Placing food order... ");
 			sf.placeFoodOrder(fo);
 			System.out.println("done");
@@ -429,35 +420,46 @@ public class Orchestrator {
 			// set the correct level of services and facilities based on
 			// the
 			// event
-			int LMThreshold = 50;
-			int MHThreshold = 100;
-			int medFreq = 2;
-			int highFreq = 3;
+
 			int expectedPeople = a.event.getExpectedPeople();
 
-			if (expectedPeople > LMThreshold && expectedPeople < MHThreshold) {
-				System.out.print("[SF] Setting cleaning frequency... ");
-				sf.setCleaningFrequency(medFreq);
-				System.out.println("done");
-			}
-
-			if (expectedPeople > MHThreshold) {
-				System.out.print("[SF] Setting cleaning frequency... ");
-				sf.setCleaningFrequency(highFreq);
-				System.out.println("done");
-			}
+			int desiredCleaningFreq = establishDesiredCleaningFrequency(expectedPeople);
+			
+			if (desiredCleaningFreq == 1)
+				break;
+			
+			System.out.print("[SF] Setting cleaning frequency... ");
+			sf.setCleaningFrequency(desiredCleaningFreq);
+			System.out.println("done");
 		}
 			break;
 		}
 		return Error.SUCCESS;
 	}
-	
-	private static HashMap<String, Float> estalishFoodNeeds(List<EventData> events) {
+
+	private static int establishDesiredCleaningFrequency(int expectedPeople) {
+		final int LMThreshold = 50;
+		final int MHThreshold = 100;
+		final int lowFreq = 1;
+		final int medFreq = 2;
+		final int highFreq = 3;
+
+		if (expectedPeople > LMThreshold && expectedPeople < MHThreshold)
+			return medFreq;
+
+		if (expectedPeople > MHThreshold)
+			return highFreq;
+
+		return lowFreq;
+	}
+
+	private static HashMap<String, Float> estalishFoodNeeds(
+			List<EventData> events) {
 		HashMap<String, Float> map = new HashMap<String, Float>();
-		
+
 		float neededMeals = 0;
 		float neededDrinks = 0;
-		
+
 		for (EventData e : events) {
 			switch (e.getEventType().getValue()) {
 			case "Degree":
@@ -470,15 +472,15 @@ public class Orchestrator {
 				break;
 			}
 		}
-		
+
 		map.put("Meals", neededMeals);
 		map.put("Drinks", neededDrinks);
-		
+
 		return map;
 	}
 
 	private static boolean valuesOutOfRange(IndoorStatus is, WeatherCondition wc) {
-		
+
 		if (is.getTemperature() != establishDesiredTemperature(wc))
 			return true;
 		if (is.getHumidity() != establishDesiredHumidity(is))
@@ -490,23 +492,22 @@ public class Orchestrator {
 	}
 
 	private static float establishDesiredCo2level(WeatherCondition wc) {
-		
+
 		return Math.min(1000, wc.getCo2Level() + 500);
 	}
-	private static float establishDesiredTemperature(
-			WeatherCondition outdoorWc) {
+
+	private static float establishDesiredTemperature(WeatherCondition outdoorWc) {
 		float out = outdoorWc.getTemperature();
-		
-		float tmin = Math.max(18, out/5 + 17);
-		float tmax = Math.min(30, out/5 + 22);
-		
+
+		float tmin = Math.max(18, out / 5 + 17);
+		float tmax = Math.min(30, out / 5 + 22);
+
 		return Math.min(Math.max(tmin, out), tmax);
 	}
-	
-	private static float establishDesiredHumidity(
-			IndoorStatus is) {
+
+	private static float establishDesiredHumidity(IndoorStatus is) {
 		float in = is.getHumidity();
-		
+
 		return Math.min(Math.max(30, in), 50);
 	}
 
@@ -568,7 +569,8 @@ public class Orchestrator {
 		return 1;
 	}
 
-	private static void scheduleTimers(PriorityQueue<TimerEvent> timers, EventData ev, String rid) {
+	private static void scheduleTimers(PriorityQueue<TimerEvent> timers,
+			EventData ev, String rid) {
 		TimerEvent a;
 
 		// CLIMATE_WAKEUP scheduling
@@ -582,7 +584,8 @@ public class Orchestrator {
 		timers.add(a);
 	}
 
-	private static void scheduleEventTimers(PriorityQueue<TimerEvent> timers, EventData ev, String rid) {
+	private static void scheduleEventTimers(PriorityQueue<TimerEvent> timers,
+			EventData ev, String rid) {
 		TimerEvent a;
 
 		scheduleTimers(timers, ev, rid);
@@ -593,7 +596,8 @@ public class Orchestrator {
 		timers.add(a);
 	}
 
-	private static void scheduleFoodTimer(PriorityQueue<TimerEvent> timers, List<EventData> events) {
+	private static void scheduleFoodTimer(PriorityQueue<TimerEvent> timers,
+			List<EventData> events) {
 		TimerEvent a;
 
 		// FOOD_WAKEUP scheduling
