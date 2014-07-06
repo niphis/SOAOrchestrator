@@ -1,7 +1,9 @@
 package com.smartcampus.test.soa;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.PriorityQueue;
 
 import com.smartcampus.acc.ArtificialClimateControlPortType;
@@ -291,6 +293,9 @@ public class Orchestrator {
 				System.out.println("done");
 			
 			System.out.println("Indoor Luminance: " + indoorLuminance);
+			
+			if (desiredLuminance < indoorLuminance)
+				break;
 
 			System.out.print("[LM] Getting outdoor luminance for room "
 					+ roomId + "... ");
@@ -375,26 +380,13 @@ public class Orchestrator {
 
 		case FOOD_WAKEUP: {
 			// set the correct level of food
-
-			float neededMeals = 0;
-			float neededDrinks = 0;
-
-			for (EventData e : a.weekEvents) {
-				switch (e.getEventType().getValue()) {
-				case "Degree":
-					neededMeals += 0.75 * e.getExpectedPeople();
-					neededDrinks += 0.75 * e.getExpectedPeople();
-					break;
-				case "Conference":
-					neededMeals += 0.5 * e.getExpectedPeople();
-					neededDrinks += 0.5 * e.getExpectedPeople();
-					break;
-				}
-			}
-
-			System.out.println("Food needs:" + "\n\tMeals = " + neededMeals
-					+ "\n\tDrinks = " + neededDrinks);
-
+			
+			HashMap<String, Float> map = estalishFoodNeeds(a.weekEvents);
+			
+			System.out.println("Food needs:");
+			for (Entry<String, Float> f: map.entrySet())
+				System.out.println("\t" + f.getKey() + " = " + f.getValue());
+			
 			System.out.print("[SF] Getting food stocks... ");
 			FoodList fl = sf.getFoodStocks();
 			System.out.println("done");
@@ -408,8 +400,7 @@ public class Orchestrator {
 				System.out.println("\t" + food.getLabel().getValue() + " "
 						+ food.getQuantity());
 
-				int neededQuantity = (int) ((food.getLabel().getValue() == "Meals") ? neededMeals
-						: neededDrinks);
+				int neededQuantity = map.get(food.getLabel().getValue()).intValue();
 
 				if (food.getQuantity() < neededQuantity) {
 					int quantityToOrder = neededQuantity - food.getQuantity();
@@ -460,8 +451,33 @@ public class Orchestrator {
 		}
 		return Error.SUCCESS;
 	}
+	
+	private static HashMap<String, Float> estalishFoodNeeds(List<EventData> events) {
+		HashMap<String, Float> map = new HashMap<String, Float>();
+		
+		float neededMeals = 0;
+		float neededDrinks = 0;
+		
+		for (EventData e : events) {
+			switch (e.getEventType().getValue()) {
+			case "Degree":
+				neededMeals += 0.75 * e.getExpectedPeople();
+				neededDrinks += 0.75 * e.getExpectedPeople();
+				break;
+			case "Conference":
+				neededMeals += 0.5 * e.getExpectedPeople();
+				neededDrinks += 0.5 * e.getExpectedPeople();
+				break;
+			}
+		}
+		
+		map.put("Meals", neededMeals);
+		map.put("Drinks", neededDrinks);
+		
+		return map;
+	}
 
-private static boolean valuesOutOfRange(IndoorStatus is, WeatherCondition wc) {
+	private static boolean valuesOutOfRange(IndoorStatus is, WeatherCondition wc) {
 		
 		if (is.getTemperature() != establishDesiredTemperature(wc))
 			return true;

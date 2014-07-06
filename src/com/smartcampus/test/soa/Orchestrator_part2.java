@@ -247,7 +247,10 @@ public class Orchestrator_part2 {
 				System.out.println("done");
 
 			System.out.println("Indoor Luminance: " + indoorLuminance);
-
+			
+			if (desiredLuminance < indoorLuminance)
+				break;
+			
 			System.out.print("[LM] Getting outdoor luminance for room "
 					+ roomId + "... ");
 
