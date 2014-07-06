@@ -4,31 +4,24 @@ import java.util.Date;
 import java.util.List;
 import java.util.PriorityQueue;
 
-import com.smartcampus.acc.ArtificialClimateControl;
 import com.smartcampus.acc.ArtificialClimateControlPortType;
 import com.smartcampus.acc.xsd.IndoorStatus;
-import com.smartcampus.luminancemanagement.LuminanceManagement;
 import com.smartcampus.luminancemanagement.LuminanceManagementPortType;
 import com.smartcampus.luminancemanagement.xsd.Room;
 import com.smartcampus.luminancemanagement.xsd.Spotlight;
 import com.smartcampus.luminancemanagement.xsd.Window;
-import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
 import com.smartcampus.naturalclimatesystem.xsd.Location;
 import com.smartcampus.naturalclimatesystem.xsd.WeatherCondition;
-import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.paths.xsd.PathComponent;
 import com.smartcampus.paths.xsd.PathData;
-import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
 import com.smartcampus.roomusagedatabase.xsd.EventData;
-import com.smartcampus.servicesfacilities.ServicesAndFacilities;
 import com.smartcampus.servicesfacilities.ServicesAndFacilitiesPortType;
 import com.smartcampus.servicesfacilities.xsd.Food;
 import com.smartcampus.servicesfacilities.xsd.FoodList;
 import com.smartcampus.servicesfacilities.xsd.FoodOrder;
-import com.smartcampus.test.soa.Orchestrator_part2.Error;
 
 public class Orchestrator {
 
@@ -188,7 +181,7 @@ public class Orchestrator {
 					List<PathComponent> componentArray = pd.getPath()
 							.getValue().getComponents();
 					for (int r = 0; r < componentArray.size(); r++) {
-						String rid = componentArray.get(r).getId().getValue();
+						String rid = componentArray.get(r).getRoomId().getValue();
 						scheduleTimers(timers, event, rid);
 					}
 				}
@@ -217,10 +210,12 @@ public class Orchestrator {
 			}
 			System.out.println("done");
 
-			System.out.println("Outdoor Conditions:" + "\n\t Temperature = "
-					+ wc.getTemperature() + "\n\t Humidity = "
-					+ wc.getHumidity() + "\n\t CO2 Level = " + wc.getCo2Level()
+			System.out.println("Outdoor Conditions:"
+					+ "\n\t Temperature = " + wc.getTemperature()
+					+ "\n\t Humidity = " + wc.getHumidity()
+					+ "\n\t CO2 Level = " + wc.getCo2Level()
 					+ "\n\t Noise Level = " + wc.getNoiseLevel());
+
 
 			System.out.print("[AC] Getting indoor status for room " + roomId
 					+ "... ");
@@ -232,19 +227,20 @@ public class Orchestrator {
 			}
 			System.out.println("done");
 
-			System.out
-					.println("Indoor Status:" + "\n\t Temperature = "
-							+ is.getTemperature() + "\n\t Humidity = "
-							+ is.getHumidity() + "\n\t CO2 Level = "
-							+ is.getCo2Level());
+			System.out.println("Indoor Status:"
+					+ "\n\t Temperature = " + is.getTemperature()
+					+ "\n\t Humidity = " + is.getHumidity()
+					+ "\n\t CO2 Level = " + is.getCo2Level());
 
-			float desiredTemperature = estabilishDesiredTemperature(wc);
-			float desiredHumidity = estabilishDesiredHumidity(wc);
-			float desiredCo2level = estabilishDesiredCo2level(wc);
+			float desiredTemperature = establishDesiredTemperature(wc);
+			float desiredHumidity = establishDesiredHumidity(is);
+			float desiredCo2level = establishDesiredCo2level(wc);
+			
+			if (!valuesOutOfRange(is, wc))
+				break;
 
 			// choose if use natural or artificial climate control system
-			if (naturalClimateUsable(desiredTemperature, desiredHumidity,
-					desiredCo2level, is, wc)) {
+			if (naturalClimateUsable(desiredTemperature, desiredHumidity, desiredCo2level, is, wc)) {
 				System.out.print("[NC] Opening windows in room " + roomId
 						+ "... ");
 				if (!nc.openWindow(l)) {
@@ -257,8 +253,8 @@ public class Orchestrator {
 
 				is.setRoomID(accObjFactory.createIndoorStatusRoomID(roomId));
 				is.setTemperature(desiredTemperature);
-				is.setFanSpeed(0.0f);
-				is.setHumidity(0.0f);
+				is.setFanSpeed(desiredCo2level);
+				is.setHumidity(desiredHumidity);
 				is.setTimer(0);
 				System.out.print("[AC] Setting indoor parameters for room "
 						+ roomId + "... ");
@@ -267,7 +263,7 @@ public class Orchestrator {
 
 				System.out.print("[NC] Closing windows in room " + roomId
 						+ "... ");
-				if (!nc.closeWindow(l)){
+				if (!nc.closeWindow(l)) {
 					System.out.println("FAILED!");
 					return Error.CLIMATE_WAKEUP_ERROR;
 				}
@@ -277,6 +273,7 @@ public class Orchestrator {
 			}
 		}
 			break;
+			
 		case LUMINANCE_WAKEUP: {
 			String roomId = a.room;
 
@@ -318,18 +315,18 @@ public class Orchestrator {
 			else
 				System.out.println("done");
 
-			if (desiredLuminance > indoorLuminance) {
+			while (desiredLuminance > indoorLuminance) {
 				// need to increase luminance
 				if (desiredLuminance < outdoorLuminance) {
 					// use natural system
-					if (rs.getWindows().get(0).getAngle() == 1) { 
+					if (rs.getWindows().get(0).getAngle() == 1) {
 						// blind is up
 						// switch on spotlight
 						for (Spotlight s : rs.getSpotlights()) {
 							s.setLuminance(desiredLuminance);
 							System.out
-							.print("[LM] Calibrating spotlights for room "
-									+ roomId + "... ");
+									.print("[LM] Calibrating spotlights for room "
+											+ roomId + "... ");
 							lm.calibrateSpotlight(rs);
 							System.out.println("done");
 						}
@@ -341,8 +338,7 @@ public class Orchestrator {
 							w.setAngle(estabilishAngle(indoorLuminance,
 									outdoorLuminance));
 
-							System.out
-							.print("[LM] Regulating blinds for room "
+							System.out.print("[LM] Regulating blinds for room "
 									+ roomId + "... ");
 							lm.regulateBlind(rs);
 							System.out.println("done");
@@ -354,11 +350,11 @@ public class Orchestrator {
 							if (indoorLuminance == -1) {
 								System.out.println("FAILED!");
 								return Error.LUMINANCE_WAKEUP_ERROR;
-							}
-							else
+							} else
 								System.out.println("done");
-							
-							System.out.println("Indoor Luminance: " + indoorLuminance);
+
+							System.out.println("Indoor Luminance: "
+									+ indoorLuminance);
 						}
 					}
 				} else {
@@ -366,50 +362,14 @@ public class Orchestrator {
 					for (Spotlight s : rs.getSpotlights()) {
 						s.setLuminance(desiredLuminance);
 						System.out
-						.print("[LM] Calibrating spotlights for room "
-								+ roomId + "... ");
+								.print("[LM] Calibrating spotlights for room "
+										+ roomId + "... ");
 						lm.calibrateSpotlight(rs);
-						System.out.println("done");
-					}
-					break;
-				}
-			} 
-			/*
-			else {
-				// need to decrease luminance
-				if (rs.getSpotlights().get(0).getLuminance() > 0
-															//the light is switched on
-															 ) {
-					// switch off spotligth
-					for (Spotlight s : rs.getSpotlights()) {
-						s.setLuminance(0.0f);
-						System.out
-						.print("[LM] Calibrating spotlights for room "
-								+ roomId + "... ");
-						lm.calibrateSpotlight(rs);
-						System.out.println("done");
-					}
-					System.out
-							.print("[LM] Getting indoor luminance for room "
-									+ roomId + "... ");
-					indoorLuminance = lm.getIndoorLuminance(roomId);
-					System.out.println("done");
-					System.out.println("Indoor Luminance: " + indoorLuminance);
-
-				} else {
-					// blind down
-					for (Window w : rs.getWindows()) {
-						w.setAngle(0.0f);
-						System.out
-						.print("[LM] Regulating blinds for room "
-								+ roomId + "... ");
-						lm.regulateBlind(rs);
 						System.out.println("done");
 					}
 					break;
 				}
 			}
-			*/
 		}
 			break;
 
@@ -501,24 +461,37 @@ public class Orchestrator {
 		return Error.SUCCESS;
 	}
 
-	private static float estabilishDesiredCo2level(WeatherCondition wc) {
+private static boolean valuesOutOfRange(IndoorStatus is, WeatherCondition wc) {
+		
+		if (is.getTemperature() != establishDesiredTemperature(wc))
+			return true;
+		if (is.getHumidity() != establishDesiredHumidity(is))
+			return true;
+		if (is.getCo2Level() != establishDesiredCo2level(wc))
+			return true;
 
-		return Math.min(1000, wc.getCo2Level());
+		return false;
 	}
 
-	private static float estabilishDesiredTemperature(WeatherCondition outdoorWc) {
+	private static float establishDesiredCo2level(WeatherCondition wc) {
+		
+		return Math.min(1000, wc.getCo2Level() + 500);
+	}
+	private static float establishDesiredTemperature(
+			WeatherCondition outdoorWc) {
 		float out = outdoorWc.getTemperature();
-
-		float tmin = Math.max(18, out / 5 + 17);
-		float tmax = Math.min(30, out / 5 + 22);
-
+		
+		float tmin = Math.max(18, out/5 + 17);
+		float tmax = Math.min(30, out/5 + 22);
+		
 		return Math.min(Math.max(tmin, out), tmax);
 	}
-
-	private static float estabilishDesiredHumidity(WeatherCondition outdoorWc) {
-		float out = outdoorWc.getHumidity();
-
-		return Math.min(Math.max(30, out), 50);
+	
+	private static float establishDesiredHumidity(
+			IndoorStatus is) {
+		float in = is.getHumidity();
+		
+		return Math.min(Math.max(30, in), 50);
 	}
 
 	private static boolean naturalClimateUsable(float desiredT, float desiredH,

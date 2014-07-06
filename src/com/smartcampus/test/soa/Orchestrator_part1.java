@@ -4,23 +4,15 @@ import java.util.Date;
 import java.util.List;
 import java.util.PriorityQueue;
 
-import com.smartcampus.acc.ArtificialClimateControl;
 import com.smartcampus.acc.ArtificialClimateControlPortType;
-import com.smartcampus.acc.local.ArtificialClimateControlService;
 import com.smartcampus.acc.xsd.IndoorStatus;
-import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
-import com.smartcampus.naturalclimatesystem.local.NaturalClimateSystemService;
 import com.smartcampus.naturalclimatesystem.xsd.Location;
 import com.smartcampus.naturalclimatesystem.xsd.WeatherCondition;
-import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
-import com.smartcampus.paths.local.PathsService;
 import com.smartcampus.paths.xsd.PathComponent;
 import com.smartcampus.paths.xsd.PathData;
-import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
-import com.smartcampus.roomusagedatabase.local.RoomUsageDatabaseService;
 import com.smartcampus.roomusagedatabase.xsd.EventData;
 
 public class Orchestrator_part1 {
@@ -140,7 +132,7 @@ public class Orchestrator_part1 {
 					List<PathComponent> componentArray = pd.getPath()
 							.getValue().getComponents();
 					for (int r = 0; r < componentArray.size(); r++) {
-						String rid = componentArray.get(r).getId().getValue();
+						String rid = componentArray.get(r).getRoomId().getValue();
 						scheduleTimers(timers, event, rid);
 					}
 				}
@@ -187,9 +179,12 @@ public class Orchestrator_part1 {
 					+ "\n\t Humidity = " + is.getHumidity()
 					+ "\n\t CO2 Level = " + is.getCo2Level());
 			
-			float desiredTemperature = estabilishDesiredTemperature(wc);
-			float desiredHumidity = estabilishDesiredHumidity(wc);
-			float desiredCo2level = estabilishDesiredCo2level(wc);
+			float desiredTemperature = establishDesiredTemperature(wc);
+			float desiredHumidity = establishDesiredHumidity(is);
+			float desiredCo2level = establishDesiredCo2level(wc);
+			
+			if (!valuesOutOfRange(is, wc))
+				break;
 			
 			// choose if use natural or artificial climate control system
 			if (naturalClimateUsable(desiredTemperature, desiredHumidity, desiredCo2level, is, wc)) {
@@ -205,8 +200,8 @@ public class Orchestrator_part1 {
 
 				is.setRoomID(accObjFactory.createIndoorStatusRoomID(roomId));
 				is.setTemperature(desiredTemperature);
-				is.setFanSpeed(0.0f);
-				is.setHumidity(0.0f);
+				is.setFanSpeed(desiredCo2level);
+				is.setHumidity(desiredHumidity);
 				is.setTimer(0);
 				System.out.print("[AC] Setting indoor parameters for room "
 						+ roomId + "... ");
@@ -221,7 +216,6 @@ public class Orchestrator_part1 {
 				}
 				else
 					System.out.println("done");
-
 			}
 		}
 			break;
@@ -229,11 +223,23 @@ public class Orchestrator_part1 {
 		return Error.SUCCESS;
 	}
 
-	private static float estabilishDesiredCo2level(WeatherCondition wc) {
+	private static boolean valuesOutOfRange(IndoorStatus is, WeatherCondition wc) {
 		
-		return Math.min(1000, wc.getCo2Level());
+		if (is.getTemperature() != establishDesiredTemperature(wc))
+			return true;
+		if (is.getHumidity() != establishDesiredHumidity(is))
+			return true;
+		if (is.getCo2Level() != establishDesiredCo2level(wc))
+			return true;
+
+		return false;
 	}
-	private static float estabilishDesiredTemperature(
+
+	private static float establishDesiredCo2level(WeatherCondition wc) {
+		
+		return Math.min(1000, wc.getCo2Level() + 500);
+	}
+	private static float establishDesiredTemperature(
 			WeatherCondition outdoorWc) {
 		float out = outdoorWc.getTemperature();
 		
@@ -243,11 +249,11 @@ public class Orchestrator_part1 {
 		return Math.min(Math.max(tmin, out), tmax);
 	}
 	
-	private static float estabilishDesiredHumidity(
-			WeatherCondition outdoorWc) {
-		float out = outdoorWc.getHumidity();
+	private static float establishDesiredHumidity(
+			IndoorStatus is) {
+		float in = is.getHumidity();
 		
-		return Math.min(Math.max(30, out), 50);
+		return Math.min(Math.max(30, in), 50);
 	}
 
 	private static boolean naturalClimateUsable(float desiredT, float desiredH, float desiredC, IndoorStatus is,

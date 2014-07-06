@@ -4,20 +4,15 @@ import java.util.PriorityQueue;
 
 import com.smartcampus.acc.ArtificialClimateControl;
 import com.smartcampus.acc.ArtificialClimateControlPortType;
-import com.smartcampus.acc.local.ArtificialClimateControlService;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
-import com.smartcampus.naturalclimatesystem.local.NaturalClimateSystemService;
 import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
-import com.smartcampus.paths.local.PathsService;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
-import com.smartcampus.roomusagedatabase.local.RoomUsageDatabaseService;
-import com.smartcampus.test.soa.Orchestrator_part1;
+import com.smartcampus.test.soa.Orchestrator_part1.Error;
 import com.smartcampus.test.soa.Orchestrator_part1.TimerEvent;
 import com.smartcampus.test.soa.Orchestrator_part1.WakeReason;
-import com.smartcampus.test.soa.Orchestrator_part1.Error;
 
 public class MainOrchestrator_part1 {
 
