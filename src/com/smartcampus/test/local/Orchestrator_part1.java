@@ -200,7 +200,7 @@ public class Orchestrator_part1 {
 			} else {
 				is.setRoomID(roomId);
 				is.setTemperature(desiredTemperature);
-				is.setFanSpeed(0.0f);
+				is.setCo2level(desiredCo2level);
 				is.setHumidity(desiredHumidity);
 				is.setTimer(0);
 				acc.setIndoorParameters(is);
