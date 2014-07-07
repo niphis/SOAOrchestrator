@@ -42,6 +42,34 @@ public class IntegrationTestIncremental3 {
 	private static LuminanceManagementPortType lm = new LuminanceManagement()
 		.getLuminanceManagementHttpSoap11Endpoint();
 	
+	public static double getPositiveRate(int err, int tot) {
+		
+		return 100 - (((double)err) / ((double)tot))*100;
+	
+	} 
+	
+	public static void printStatistics(Error type, int err, int tot) {
+		
+		switch(type) {
+		case DAILY_WAKEUP_ERROR:
+			System.out.println("	Daily WakeUp Services [ROOM USAGE DB & PATH SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case CLIMATE_WAKEUP_ERROR:
+			System.out.println("	Climate WakeUp Services [ARTIFICIAL & NATURAL REGULATION SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case LUMINANCE_WAKEUP_ERROR:
+			System.out.println("	Luminance Management Services [LUMINANCE MANAGEMENT SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		}
+	
+	}
+	
 	public static void testOrchestrator(int maxIterations) {
 		
 		int climateControlErrorCounter = 0;
@@ -93,7 +121,7 @@ public class IntegrationTestIncremental3 {
 				
 				switch (res) {
 				case DAILY_WAKEUP_ERROR:
-					climateControlErrorCounter++;
+					dailyWakeupErrorCounter++;
 					break;
 				case CLIMATE_WAKEUP_ERROR:
 					climateControlErrorCounter++;
@@ -108,8 +136,12 @@ public class IntegrationTestIncremental3 {
 			
 		}
 		
-		// Print Statistics
-		
+		// Print statistics
+		System.out.println("(2) Integration Test - Orchestrator - Report");
+		System.out.println("Tested functions");
+		printStatistics(Error.DAILY_WAKEUP_ERROR,dailyWakeupErrorCounter,dailyWakeupEventCounter);
+		printStatistics(Error.CLIMATE_WAKEUP_ERROR,climateControlErrorCounter,climateControlEventCounter);
+		printStatistics(Error.LUMINANCE_WAKEUP_ERROR,luminanceManagementErrorCounter,luminanceManagementEventCounter);
 	}
 
 	public static void main(String[] args) {

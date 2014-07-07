@@ -34,7 +34,30 @@ public class IntegrationTestIncremental2 {
 		.getNaturalClimateSystemHttpSoap11Endpoint();
 	private static PathsPortType p = new Paths().getPathsHttpSoap11Endpoint();
 	private static RoomUsageDatabasePortType rud = new RoomUsageDatabase().getRoomUsageDatabaseHttpSoap11Endpoint();
+	
+	public static double getPositiveRate(int err, int tot) {
 		
+		return 100 - (((double)err) / ((double)tot))*100;
+	
+	}
+	
+	public static void printStatistics(Error type, int err, int tot) {
+		
+		switch(type) {
+		case DAILY_WAKEUP_ERROR:
+			System.out.println("	Daily WakeUp Services [ROOM_USAGE_DB & PATH_SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case CLIMATE_WAKEUP_ERROR:
+			System.out.println("	Climate WakeUp Services [ARTIFICIAL & NATURAL REGULATION SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		}
+	
+	}
+	
 	public static void testOrchestrator(int maxIterations) {
 		
 		int climateControlErrorCounter = 0;
@@ -77,7 +100,7 @@ public class IntegrationTestIncremental2 {
 				
 				switch (res) {
 				case DAILY_WAKEUP_ERROR:
-					climateControlErrorCounter++;
+					dailyWakeupErrorCounter++;
 					break;
 				case CLIMATE_WAKEUP_ERROR:
 					climateControlErrorCounter++;
@@ -88,6 +111,11 @@ public class IntegrationTestIncremental2 {
 			while (res != Error.NO_EVENT);
 			
 			// Print statistics
+			System.out.println("(1) Integration Test - Orchestrator - Report");
+			System.out.println("Tested functions");
+			printStatistics(Error.DAILY_WAKEUP_ERROR,dailyWakeupErrorCounter,dailyWakeupEventCounter);
+			printStatistics(Error.CLIMATE_WAKEUP_ERROR,climateControlErrorCounter,climateControlEventCounter);
+			
 		}
 	}
 	
