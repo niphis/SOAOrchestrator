@@ -260,7 +260,7 @@ public class UnitTestIncrement1 {
 	}
 
 	public static void main(String[] args) {
-		int runs = 1000;
+		int runs = 10000;
 		
 		System.out.println("Unit Tests");
 
@@ -279,7 +279,7 @@ public class UnitTestIncrement1 {
 		System.out.println("\n   RUD - Report");
 		testRUD(runs);
 
-		System.out.println("\n   testServicesAndFacilities - Report");
+		System.out.println("\n   ServicesAndFacilities - Report");
 		testServicesAndFacilities(runs);
 	}
 
