@@ -1,14 +1,14 @@
-package com.smartcampus.test.local;
+package com.smartcampus.orchestrator.local;
 
 import java.util.PriorityQueue;
 
 import com.smartcampus.acc.local.ArtificialClimateControlService;
 import com.smartcampus.naturalclimatesystem.local.NaturalClimateSystemService;
+import com.smartcampus.orchestrator.local.Orchestrator_part1.Error;
+import com.smartcampus.orchestrator.local.Orchestrator_part1.TimerEvent;
+import com.smartcampus.orchestrator.local.Orchestrator_part1.WakeReason;
 import com.smartcampus.paths.local.PathsService;
 import com.smartcampus.roomusagedatabase.local.RoomUsageDatabaseService;
-import com.smartcampus.test.local.Orchestrator_part1.Error;
-import com.smartcampus.test.local.Orchestrator_part1.TimerEvent;
-import com.smartcampus.test.local.Orchestrator_part1.WakeReason;
 
 public class MainOrchestrator_part1 {
 

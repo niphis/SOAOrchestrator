@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.smartcampus.test.soa;
+package com.smartcampus.orchestrator.soa.test;
 
 import java.util.PriorityQueue;
 
@@ -11,15 +11,16 @@ import com.smartcampus.luminancemanagement.LuminanceManagement;
 import com.smartcampus.luminancemanagement.LuminanceManagementPortType;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
+import com.smartcampus.orchestrator.soa.Orchestrator;
+import com.smartcampus.orchestrator.soa.Orchestrator.Error;
+import com.smartcampus.orchestrator.soa.Orchestrator.TimerEvent;
+import com.smartcampus.orchestrator.soa.Orchestrator.WakeReason;
 import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
 import com.smartcampus.servicesfacilities.ServicesAndFacilities;
 import com.smartcampus.servicesfacilities.ServicesAndFacilitiesPortType;
-import com.smartcampus.test.soa.Orchestrator.TimerEvent;
-import com.smartcampus.test.soa.Orchestrator.WakeReason;
-import com.smartcampus.test.soa.Orchestrator.Error;
 
 /**
  * @author Tom
