@@ -82,17 +82,22 @@ public class IntegrationTestIncremental2 {
 			
 			do {
 				
-				WakeReason w = timers.element().reason;
+				if (!timers.isEmpty()) {
 				
-				// Counter on event
+					TimerEvent t = timers.element();
 				
-				switch(w) {
-				case DAILY_WAKEUP:
-					dailyWakeupEventCounter++;
-					break;
-				case CLIMATE_WAKEUP:
-					climateControlEventCounter++;
-					break;
+					// Counter on event
+					
+					WakeReason w = t.reason;
+					switch(w) {
+					case DAILY_WAKEUP:
+						dailyWakeupEventCounter++;
+						break;
+					case CLIMATE_WAKEUP:
+						climateControlEventCounter++;
+						break;
+					}
+				
 				}
 				
 				res = Orchestrator_part1.wakeUp(timers);
@@ -113,6 +118,7 @@ public class IntegrationTestIncremental2 {
 			
 			// Print statistics
 			System.out.println("(1) Integration Test - Orchestrator - Report");
+			System.out.println("    Trials: " + maxIterations);
 			System.out.println("Tested functions");
 			printStatistics(Error.DAILY_WAKEUP_ERROR,dailyWakeupErrorCounter,dailyWakeupEventCounter);
 			printStatistics(Error.CLIMATE_WAKEUP_ERROR,climateControlErrorCounter,climateControlEventCounter);
@@ -121,6 +127,6 @@ public class IntegrationTestIncremental2 {
 	}
 	
 	public static void main(String[] args) {
-		testOrchestrator(1000);
+		testOrchestrator(10000);
 	}
 }

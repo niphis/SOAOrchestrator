@@ -13,11 +13,13 @@ import com.smartcampus.luminancemanagement.xsd.Window;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
 import com.smartcampus.naturalclimatesystem.xsd.Location;
 import com.smartcampus.naturalclimatesystem.xsd.WeatherCondition;
+import com.smartcampus.orchestrator.soa.Orchestrator_part1.Error;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.paths.xsd.PathComponent;
 import com.smartcampus.paths.xsd.PathData;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
 import com.smartcampus.roomusagedatabase.xsd.EventData;
+import com.smartcampus.roomusagedatabase.xsd.EventList;
 
 public class Orchestrator_part2 {
 
@@ -99,7 +101,16 @@ public class Orchestrator_part2 {
 
 		case DAILY_WAKEUP: {
 			System.out.print("[RU] Searching for events... ");
-			List<EventData> events = rud.searchEvent(null).getEvents();
+			EventList eventList = rud.searchEvent(null);
+			if (eventList == null) {
+				System.out.println("FAILED!"); 
+				return Error.DAILY_WAKEUP_ERROR;
+			}
+			List<EventData> events = eventList.getEvents();
+			if (events == null) {
+				System.out.println("FAILED!"); 
+				return Error.DAILY_WAKEUP_ERROR;
+			}
 			System.out.println("done");
 
 			for (int i = 0; i < events.size(); i++) {

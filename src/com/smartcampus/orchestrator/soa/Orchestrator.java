@@ -15,11 +15,13 @@ import com.smartcampus.luminancemanagement.xsd.Window;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
 import com.smartcampus.naturalclimatesystem.xsd.Location;
 import com.smartcampus.naturalclimatesystem.xsd.WeatherCondition;
+import com.smartcampus.orchestrator.soa.Orchestrator_part2.Error;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.paths.xsd.PathComponent;
 import com.smartcampus.paths.xsd.PathData;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
 import com.smartcampus.roomusagedatabase.xsd.EventData;
+import com.smartcampus.roomusagedatabase.xsd.EventList;
 import com.smartcampus.servicesfacilities.ServicesAndFacilitiesPortType;
 import com.smartcampus.servicesfacilities.xsd.Food;
 import com.smartcampus.servicesfacilities.xsd.FoodList;
@@ -127,7 +129,17 @@ public class Orchestrator {
 					* 24 * 7); // plus one week
 
 			System.out.print("[RU] Searching for events ... ");
-			List<EventData> events = rud.searchEvent(conditions).getEvents();
+			EventList eventList = rud.searchEvent(null);
+			if (eventList == null) {
+				System.out.println("FAILED!"); 
+				return Error.DAILY_WAKEUP_ERROR;
+			}
+			List<EventData> events = eventList.getEvents();
+			if (events == null) {
+				System.out.println("FAILED!"); 
+				return Error.DAILY_WAKEUP_ERROR;
+			}
+			System.out.println("done");
 			System.out.println("done");
 
 			for (int i = 0; i < events.size(); i++) {
@@ -379,11 +391,20 @@ public class Orchestrator {
 
 			System.out.print("[SF] Getting food stocks... ");
 			FoodList fl = sf.getFoodStocks();
+			if (fl == null) {
+				System.out.println("FAILED!");
+				return Error.FOOD_WAKEUP_ERROR;
+			}
 			System.out.println("done");
 
-			System.out.println("Food stocks:");
-
 			List<Food> ff = fl.getFoods();
+			if (ff == null) {
+				System.out.println("FAILED!");
+				return Error.FOOD_WAKEUP_ERROR;
+			}
+			System.out.println("done");
+			
+			System.out.println("Food stocks:");
 			for (int f = 0; f < ff.size(); f++) {
 				Food food = ff.get(f);
 

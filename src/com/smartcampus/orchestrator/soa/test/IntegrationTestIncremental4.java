@@ -115,27 +115,29 @@ private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>(
 			
 			do {
 				
-				WakeReason w = timers.element().reason;
-				// Counter on event
-	
-				switch(w) {
-				case DAILY_WAKEUP:
-					dailyWakeupEventCounter++;
-					break;
-				case CLIMATE_WAKEUP:
-					climateControlEventCounter++;
-					break;
-				case LUMINANCE_WAKEUP:
-					luminanceManagementEventCounter++;
-					break;
-				case FOOD_WAKEUP:
-					foodWakeupEventCounter++;
-					break;
-				case CLEANING_WAKEUP:
-					cleanWakeupEventCounter++;
-					break;
+				if(!timers.isEmpty()) {
+					WakeReason w = timers.element().reason;
+					// Counter on event
+		
+					switch(w) {
+					case DAILY_WAKEUP:
+						dailyWakeupEventCounter++;
+						break;
+					case CLIMATE_WAKEUP:
+						climateControlEventCounter++;
+						break;
+					case LUMINANCE_WAKEUP:
+						luminanceManagementEventCounter++;
+						break;
+					case FOOD_WAKEUP:
+						foodWakeupEventCounter++;
+						break;
+					case CLEANING_WAKEUP:
+						cleanWakeupEventCounter++;
+						break;
+					}
 				}
-	
+		
 				res = Orchestrator.wakeUp(timers);
 				
 				// Counter on error
@@ -164,7 +166,7 @@ private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>(
 		}
 		
 		// Print statistics
-		System.out.println("(1) Integration Test - Orchestrator - Report");
+		System.out.println("(3) Integration Test - Orchestrator - Report");
 		System.out.println("Tested functions");
 		printStatistics(Error.DAILY_WAKEUP_ERROR,dailyWakeupErrorCounter,dailyWakeupEventCounter);
 		printStatistics(Error.CLIMATE_WAKEUP_ERROR,climateControlErrorCounter,climateControlEventCounter);
@@ -174,7 +176,7 @@ private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>(
 	}
 	
 	public static void main(String[] args) {
-		testOrchestrator(1000);
+		testOrchestrator(10000);
 	}
 
 }

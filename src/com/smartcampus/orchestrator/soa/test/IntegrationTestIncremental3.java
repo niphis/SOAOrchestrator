@@ -26,12 +26,7 @@ import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
  */
 public class IntegrationTestIncremental3 {
 
-	/**
-	 * @param args
-	 */
-	/**
-	 * @param args
-	 */
+	
 	private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
 	
 	private static ArtificialClimateControlPortType acc = new ArtificialClimateControl()
@@ -99,22 +94,24 @@ public class IntegrationTestIncremental3 {
 			
 			do {
 				
-				WakeReason w = timers.element().reason;
-				
-				// Counter on event
-				
-				switch(w) {
-				case DAILY_WAKEUP:
-					dailyWakeupEventCounter++;
-					break;
-				case CLIMATE_WAKEUP:
-					climateControlEventCounter++;
-					break;
-				case LUMINANCE_WAKEUP:
-					luminanceManagementEventCounter++;
-					break;
+				if(!timers.isEmpty()) {
+					
+					WakeReason w = timers.element().reason;
+					
+					// Counter on event
+					
+					switch(w) {
+					case DAILY_WAKEUP:
+						dailyWakeupEventCounter++;
+						break;
+					case CLIMATE_WAKEUP:
+						climateControlEventCounter++;
+						break;
+					case LUMINANCE_WAKEUP:
+						luminanceManagementEventCounter++;
+						break;
+					}
 				}
-	
 				
 				res = Orchestrator_part2.wakeUp(timers);
 				
@@ -138,7 +135,7 @@ public class IntegrationTestIncremental3 {
 		}
 		
 		// Print statistics
-		System.out.println("(2) Integration Test - Orchestrator - Report");
+		System.out.println("(3) Integration Test - Orchestrator - Report");
 		System.out.println("Tested functions");
 		printStatistics(Error.DAILY_WAKEUP_ERROR,dailyWakeupErrorCounter,dailyWakeupEventCounter);
 		printStatistics(Error.CLIMATE_WAKEUP_ERROR,climateControlErrorCounter,climateControlEventCounter);
@@ -146,7 +143,7 @@ public class IntegrationTestIncremental3 {
 	}
 
 	public static void main(String[] args) {
-		testOrchestrator(1000);
+		testOrchestrator(10000);
 	}
 
 }
