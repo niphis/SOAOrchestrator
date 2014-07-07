@@ -212,7 +212,7 @@ public class Orchestrator_part2 {
 
 				is.setRoomID(accObjFactory.createIndoorStatusRoomID(roomId));
 				is.setTemperature(desiredTemperature);
-				is.setFanSpeed(desiredCo2level);
+				is.setCo2Level(desiredCo2level);
 				is.setHumidity(desiredHumidity);
 				is.setTimer(0);
 				System.out.print("[AC] Setting indoor parameters for room "
