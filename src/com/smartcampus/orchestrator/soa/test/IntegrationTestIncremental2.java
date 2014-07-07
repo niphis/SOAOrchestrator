@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.smartcampus.test.soa;
+package com.smartcampus.orchestrator.soa.test;
 
 import java.util.PriorityQueue;
 
@@ -9,13 +9,14 @@ import com.smartcampus.acc.ArtificialClimateControl;
 import com.smartcampus.acc.ArtificialClimateControlPortType;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
+import com.smartcampus.orchestrator.soa.Orchestrator_part1;
+import com.smartcampus.orchestrator.soa.Orchestrator_part1.Error;
+import com.smartcampus.orchestrator.soa.Orchestrator_part1.TimerEvent;
+import com.smartcampus.orchestrator.soa.Orchestrator_part1.WakeReason;
 import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
-import com.smartcampus.test.soa.Orchestrator_part1.Error;
-import com.smartcampus.test.soa.Orchestrator_part1.TimerEvent;
-import com.smartcampus.test.soa.Orchestrator_part1.WakeReason;
 
 /**
  * @author Tom
@@ -34,7 +35,30 @@ public class IntegrationTestIncremental2 {
 		.getNaturalClimateSystemHttpSoap11Endpoint();
 	private static PathsPortType p = new Paths().getPathsHttpSoap11Endpoint();
 	private static RoomUsageDatabasePortType rud = new RoomUsageDatabase().getRoomUsageDatabaseHttpSoap11Endpoint();
+	
+	public static double getPositiveRate(int err, int tot) {
 		
+		return 100 - (((double)err) / ((double)tot))*100;
+	
+	}
+	
+	public static void printStatistics(Error type, int err, int tot) {
+		
+		switch(type) {
+		case DAILY_WAKEUP_ERROR:
+			System.out.println("	Daily WakeUp Services [ROOM_USAGE_DB & PATH_SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case CLIMATE_WAKEUP_ERROR:
+			System.out.println("	Climate WakeUp Services [ARTIFICIAL & NATURAL REGULATION SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		}
+	
+	}
+	
 	public static void testOrchestrator(int maxIterations) {
 		
 		int climateControlErrorCounter = 0;
@@ -77,7 +101,7 @@ public class IntegrationTestIncremental2 {
 				
 				switch (res) {
 				case DAILY_WAKEUP_ERROR:
-					climateControlErrorCounter++;
+					dailyWakeupErrorCounter++;
 					break;
 				case CLIMATE_WAKEUP_ERROR:
 					climateControlErrorCounter++;
@@ -88,6 +112,11 @@ public class IntegrationTestIncremental2 {
 			while (res != Error.NO_EVENT);
 			
 			// Print statistics
+			System.out.println("(1) Integration Test - Orchestrator - Report");
+			System.out.println("Tested functions");
+			printStatistics(Error.DAILY_WAKEUP_ERROR,dailyWakeupErrorCounter,dailyWakeupEventCounter);
+			printStatistics(Error.CLIMATE_WAKEUP_ERROR,climateControlErrorCounter,climateControlEventCounter);
+			
 		}
 	}
 	

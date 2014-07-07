@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.smartcampus.test.soa;
+package com.smartcampus.orchestrator.soa.test;
 
 import java.util.PriorityQueue;
 
@@ -11,13 +11,14 @@ import com.smartcampus.luminancemanagement.LuminanceManagement;
 import com.smartcampus.luminancemanagement.LuminanceManagementPortType;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
+import com.smartcampus.orchestrator.soa.Orchestrator_part2;
+import com.smartcampus.orchestrator.soa.Orchestrator_part2.Error;
+import com.smartcampus.orchestrator.soa.Orchestrator_part2.TimerEvent;
+import com.smartcampus.orchestrator.soa.Orchestrator_part2.WakeReason;
 import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
-import com.smartcampus.test.soa.Orchestrator_part2.Error;
-import com.smartcampus.test.soa.Orchestrator_part2.TimerEvent;
-import com.smartcampus.test.soa.Orchestrator_part2.WakeReason;
 
 /**
  * @author Tom
@@ -41,6 +42,34 @@ public class IntegrationTestIncremental3 {
 	private static RoomUsageDatabasePortType rud = new RoomUsageDatabase().getRoomUsageDatabaseHttpSoap11Endpoint();
 	private static LuminanceManagementPortType lm = new LuminanceManagement()
 		.getLuminanceManagementHttpSoap11Endpoint();
+	
+	public static double getPositiveRate(int err, int tot) {
+		
+		return 100 - (((double)err) / ((double)tot))*100;
+	
+	} 
+	
+	public static void printStatistics(Error type, int err, int tot) {
+		
+		switch(type) {
+		case DAILY_WAKEUP_ERROR:
+			System.out.println("	Daily WakeUp Services [ROOM USAGE DB & PATH SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case CLIMATE_WAKEUP_ERROR:
+			System.out.println("	Climate WakeUp Services [ARTIFICIAL & NATURAL REGULATION SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case LUMINANCE_WAKEUP_ERROR:
+			System.out.println("	Luminance Management Services [LUMINANCE MANAGEMENT SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		}
+	
+	}
 	
 	public static void testOrchestrator(int maxIterations) {
 		
@@ -93,7 +122,7 @@ public class IntegrationTestIncremental3 {
 				
 				switch (res) {
 				case DAILY_WAKEUP_ERROR:
-					climateControlErrorCounter++;
+					dailyWakeupErrorCounter++;
 					break;
 				case CLIMATE_WAKEUP_ERROR:
 					climateControlErrorCounter++;
@@ -108,8 +137,12 @@ public class IntegrationTestIncremental3 {
 			
 		}
 		
-		// Print Statistics
-		
+		// Print statistics
+		System.out.println("(2) Integration Test - Orchestrator - Report");
+		System.out.println("Tested functions");
+		printStatistics(Error.DAILY_WAKEUP_ERROR,dailyWakeupErrorCounter,dailyWakeupEventCounter);
+		printStatistics(Error.CLIMATE_WAKEUP_ERROR,climateControlErrorCounter,climateControlEventCounter);
+		printStatistics(Error.LUMINANCE_WAKEUP_ERROR,luminanceManagementErrorCounter,luminanceManagementEventCounter);
 	}
 
 	public static void main(String[] args) {

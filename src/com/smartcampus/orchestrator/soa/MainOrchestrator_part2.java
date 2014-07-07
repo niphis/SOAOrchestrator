@@ -1,4 +1,4 @@
-package com.smartcampus.test.soa;
+package com.smartcampus.orchestrator.soa;
 
 import java.util.PriorityQueue;
 
@@ -8,13 +8,13 @@ import com.smartcampus.luminancemanagement.LuminanceManagement;
 import com.smartcampus.luminancemanagement.LuminanceManagementPortType;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
+import com.smartcampus.orchestrator.soa.Orchestrator_part2.Error;
+import com.smartcampus.orchestrator.soa.Orchestrator_part2.TimerEvent;
+import com.smartcampus.orchestrator.soa.Orchestrator_part2.WakeReason;
 import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
-import com.smartcampus.test.soa.Orchestrator_part2.WakeReason;
-import com.smartcampus.test.soa.Orchestrator_part2.Error;
-import com.smartcampus.test.soa.Orchestrator_part2.TimerEvent;
 
 public class MainOrchestrator_part2 {
 

@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.smartcampus.test.soa;
+package com.smartcampus.orchestrator.soa.test;
 
 import java.util.PriorityQueue;
 
@@ -11,15 +11,16 @@ import com.smartcampus.luminancemanagement.LuminanceManagement;
 import com.smartcampus.luminancemanagement.LuminanceManagementPortType;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
+import com.smartcampus.orchestrator.soa.Orchestrator;
+import com.smartcampus.orchestrator.soa.Orchestrator.Error;
+import com.smartcampus.orchestrator.soa.Orchestrator.TimerEvent;
+import com.smartcampus.orchestrator.soa.Orchestrator.WakeReason;
 import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
 import com.smartcampus.servicesfacilities.ServicesAndFacilities;
 import com.smartcampus.servicesfacilities.ServicesAndFacilitiesPortType;
-import com.smartcampus.test.soa.Orchestrator.TimerEvent;
-import com.smartcampus.test.soa.Orchestrator.WakeReason;
-import com.smartcampus.test.soa.Orchestrator.Error;
 
 /**
  * @author Tom
@@ -42,6 +43,43 @@ private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>(
 		.getLuminanceManagementHttpSoap11Endpoint();
 	private static ServicesAndFacilitiesPortType sf =  new ServicesAndFacilities()
 		.getServicesAndFacilitiesHttpSoap11Endpoint();
+	
+	public static double getPositiveRate(int err, int tot) {
+		
+		return 100 - (((double)err) / ((double)tot))*100;
+	
+	} 
+	
+	public static void printStatistics(Error type, int err, int tot) {
+		
+		switch(type) {
+		case DAILY_WAKEUP_ERROR:
+			System.out.println("	Daily WakeUp Services [ROOM USAGE DB & PATH SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case CLIMATE_WAKEUP_ERROR:
+			System.out.println("	Climate WakeUp Services [ARTIFICIAL & NATURAL REGULATION SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case LUMINANCE_WAKEUP_ERROR:
+			System.out.println("	Luminance Management Services [LUMINANCE MANAGEMENT SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case FOOD_WAKEUP_ERROR:
+			System.out.println("	Food Facilities Services [SERVICES AND FACILITIES SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case CLEANING_WAKEUP_ERROR:
+			System.out.println("	Cleaning Facilities Services [SERVICES AND FACILITIES SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;	
+		}
+	}
 	
 	private static void testOrchestrator(int maxIterations) {
 		
@@ -125,8 +163,14 @@ private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>(
 		
 		}
 		
-		
-		
+		// Print statistics
+		System.out.println("(1) Integration Test - Orchestrator - Report");
+		System.out.println("Tested functions");
+		printStatistics(Error.DAILY_WAKEUP_ERROR,dailyWakeupErrorCounter,dailyWakeupEventCounter);
+		printStatistics(Error.CLIMATE_WAKEUP_ERROR,climateControlErrorCounter,climateControlEventCounter);
+		printStatistics(Error.LUMINANCE_WAKEUP_ERROR,luminanceManagementErrorCounter,luminanceManagementEventCounter);
+		printStatistics(Error.FOOD_WAKEUP_ERROR,foodWakeupErrorCounter,foodWakeupEventCounter);
+		printStatistics(Error.CLEANING_WAKEUP_ERROR,cleanWakeupErrorCounter,cleanWakeupEventCounter);
 	}
 	
 	public static void main(String[] args) {

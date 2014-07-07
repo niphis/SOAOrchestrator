@@ -1,4 +1,4 @@
-package com.smartcampus.test.soa;
+package com.smartcampus.orchestrator.soa;
 
 import java.util.Date;
 import java.util.List;

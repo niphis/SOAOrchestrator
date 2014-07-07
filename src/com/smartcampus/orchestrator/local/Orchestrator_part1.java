@@ -1,4 +1,4 @@
-package com.smartcampus.test.local;
+package com.smartcampus.orchestrator.local;
 
 import java.util.PriorityQueue;
 

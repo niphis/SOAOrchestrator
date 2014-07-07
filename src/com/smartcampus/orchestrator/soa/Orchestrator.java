@@ -1,7 +1,9 @@
-package com.smartcampus.test.soa;
+package com.smartcampus.orchestrator.soa;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.PriorityQueue;
 
 import com.smartcampus.acc.ArtificialClimateControlPortType;
@@ -18,15 +20,19 @@ import com.smartcampus.paths.xsd.PathComponent;
 import com.smartcampus.paths.xsd.PathData;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
 import com.smartcampus.roomusagedatabase.xsd.EventData;
+import com.smartcampus.servicesfacilities.ServicesAndFacilitiesPortType;
+import com.smartcampus.servicesfacilities.xsd.Food;
+import com.smartcampus.servicesfacilities.xsd.FoodList;
+import com.smartcampus.servicesfacilities.xsd.FoodOrder;
 
-public class Orchestrator_part2 {
+public class Orchestrator {
 
-	public enum WakeReason {
-		DAILY_WAKEUP, CLIMATE_WAKEUP, LUMINANCE_WAKEUP
+	public static enum WakeReason {
+		DAILY_WAKEUP, CLIMATE_WAKEUP, LUMINANCE_WAKEUP, FOOD_WAKEUP, CLEANING_WAKEUP
 	};
 
 	public enum Error {
-		NO_EVENT, SUCCESS, DAILY_WAKEUP_ERROR, CLIMATE_WAKEUP_ERROR, LUMINANCE_WAKEUP_ERROR
+		NO_EVENT, SUCCESS, DAILY_WAKEUP_ERROR, CLIMATE_WAKEUP_ERROR, LUMINANCE_WAKEUP_ERROR, FOOD_WAKEUP_ERROR, CLEANING_WAKEUP_ERROR
 	};
 
 	private static ArtificialClimateControlPortType acc;
@@ -34,6 +40,7 @@ public class Orchestrator_part2 {
 	private static PathsPortType p;
 	private static RoomUsageDatabasePortType rud;
 	private static LuminanceManagementPortType lm;
+	private static ServicesAndFacilitiesPortType sf;
 
 	public static void setArtificialClimateControlPortType(
 			ArtificialClimateControlPortType a) {
@@ -58,18 +65,24 @@ public class Orchestrator_part2 {
 		lm = l;
 	}
 
+	public static void setServicesAndFacilitiesPortType(
+			ServicesAndFacilitiesPortType s) {
+		sf = s;
+	}
+
 	private static com.smartcampus.naturalclimatesystem.xsd.ObjectFactory ncsObjFactory = new com.smartcampus.naturalclimatesystem.xsd.ObjectFactory();
 	private static com.smartcampus.acc.xsd.ObjectFactory accObjFactory = new com.smartcampus.acc.xsd.ObjectFactory();
-
 	// private static com.smartcampus.luminancemanagement.xsd.ObjectFactory
 	// lmObjFactory = new
 	// com.smartcampus.luminancemanagement.xsd.ObjectFactory();
+	private static com.smartcampus.servicesfacilities.xsd.ObjectFactory sfObjFactory = new com.smartcampus.servicesfacilities.xsd.ObjectFactory();
 
 	public static class TimerEvent implements Comparable<TimerEvent> {
 		public WakeReason reason;
 		public Long time;
 		public EventData event;
 		public String room;
+		public List<EventData> weekEvents;
 
 		public TimerEvent(WakeReason reason) {
 			this.reason = reason;
@@ -82,6 +95,15 @@ public class Orchestrator_part2 {
 			this.time = unixTimestamp;
 			this.event = event;
 			this.room = room;
+		}
+
+		public TimerEvent(WakeReason reason, Long unixTimestamp,
+				EventData event, String room, List<EventData> weekEvents) {
+			this.reason = reason;
+			this.time = unixTimestamp;
+			this.event = event;
+			this.room = room;
+			this.weekEvents = weekEvents;
 		}
 
 		@Override
@@ -98,8 +120,14 @@ public class Orchestrator_part2 {
 		switch (a.reason) {
 
 		case DAILY_WAKEUP: {
-			System.out.print("[RU] Searching for events... ");
-			List<EventData> events = rud.searchEvent(null).getEvents();
+
+			EventData conditions = new EventData();
+			conditions.setStartTime(System.currentTimeMillis());
+			conditions.setEndTime(System.currentTimeMillis() + 1000 * 60 * 60
+					* 24 * 7); // plus one week
+
+			System.out.print("[RU] Searching for events ... ");
+			List<EventData> events = rud.searchEvent(conditions).getEvents();
 			System.out.println("done");
 
 			for (int i = 0; i < events.size(); i++) {
@@ -115,7 +143,12 @@ public class Orchestrator_part2 {
 						+ ")" + "\n\tfrom " + new Date(event.getStartTime())
 						+ "\n\tto " + new Date(event.getEndTime()));
 
-				scheduleTimers(timers, event, room);
+				// if is a future event (more than tomorrow), do not set timers
+				if (event.getDate() > System.currentTimeMillis() + 1000 * 60
+						* 60 * 24)
+					continue;
+
+				scheduleEventTimers(timers, event, room);
 
 				System.out.print("[P] Getting paths to room " + room + "... ");
 				List<Integer> pathsToRoom = p.getPaths(room);
@@ -150,6 +183,10 @@ public class Orchestrator_part2 {
 					}
 				}
 			}
+
+			// schedule food order for next weeks events
+			scheduleFoodTimer(timers, events);
+
 		}
 			break;
 
@@ -231,6 +268,7 @@ public class Orchestrator_part2 {
 			}
 		}
 			break;
+
 		case LUMINANCE_WAKEUP: {
 			String roomId = a.room;
 
@@ -247,10 +285,10 @@ public class Orchestrator_part2 {
 				System.out.println("done");
 
 			System.out.println("Indoor Luminance: " + indoorLuminance);
-			
+
 			if (desiredLuminance < indoorLuminance)
 				break;
-			
+
 			System.out.print("[LM] Getting outdoor luminance for room "
 					+ roomId + "... ");
 
@@ -329,8 +367,116 @@ public class Orchestrator_part2 {
 			}
 		}
 			break;
+
+		case FOOD_WAKEUP: {
+			// set the correct level of food
+
+			HashMap<String, Float> map = estalishFoodNeeds(a.weekEvents);
+
+			System.out.println("Food needs:");
+			for (Entry<String, Float> f : map.entrySet())
+				System.out.println("\t" + f.getKey() + " = " + f.getValue());
+
+			System.out.print("[SF] Getting food stocks... ");
+			FoodList fl = sf.getFoodStocks();
+			System.out.println("done");
+
+			System.out.println("Food stocks:");
+
+			List<Food> ff = fl.getFoods();
+			for (int f = 0; f < ff.size(); f++) {
+				Food food = ff.get(f);
+
+				System.out.println("\t" + food.getLabel().getValue() + " "
+						+ food.getQuantity());
+
+				int neededQuantity = map.get(food.getLabel().getValue())
+						.intValue();
+
+				if (food.getQuantity() < neededQuantity) {
+					int quantityToOrder = neededQuantity - food.getQuantity();
+					food.setQuantity(quantityToOrder);
+				} else
+					food.setQuantity(0);
+			}
+			FoodOrder fo = new FoodOrder();
+			fo.setFoodList(sfObjFactory.createFoodOrderFoodList(fl));
+
+			System.out.println("Food order:");
+			for (Food food : ff)
+				System.out.println("\t" + food.getLabel().getValue() + " "
+						+ food.getQuantity());
+
+			System.out.print("[SF] Placing food order... ");
+			sf.placeFoodOrder(fo);
+			System.out.println("done");
+		}
+
+			break;
+
+		// Input State: expectedPeople
+		case CLEANING_WAKEUP: {
+
+			// set the correct level of services and facilities based on
+			// the
+			// event
+
+			int expectedPeople = a.event.getExpectedPeople();
+
+			int desiredCleaningFreq = establishDesiredCleaningFrequency(expectedPeople);
+			
+			if (desiredCleaningFreq == 1)
+				break;
+			
+			System.out.print("[SF] Setting cleaning frequency... ");
+			sf.setCleaningFrequency(desiredCleaningFreq);
+			System.out.println("done");
+		}
+			break;
 		}
 		return Error.SUCCESS;
+	}
+
+	private static int establishDesiredCleaningFrequency(int expectedPeople) {
+		final int LMThreshold = 50;
+		final int MHThreshold = 100;
+		final int lowFreq = 1;
+		final int medFreq = 2;
+		final int highFreq = 3;
+
+		if (expectedPeople > LMThreshold && expectedPeople < MHThreshold)
+			return medFreq;
+
+		if (expectedPeople > MHThreshold)
+			return highFreq;
+
+		return lowFreq;
+	}
+
+	private static HashMap<String, Float> estalishFoodNeeds(
+			List<EventData> events) {
+		HashMap<String, Float> map = new HashMap<String, Float>();
+
+		float neededMeals = 0;
+		float neededDrinks = 0;
+
+		for (EventData e : events) {
+			switch (e.getEventType().getValue()) {
+			case "Degree":
+				neededMeals += 0.75 * e.getExpectedPeople();
+				neededDrinks += 0.75 * e.getExpectedPeople();
+				break;
+			case "Conference":
+				neededMeals += 0.5 * e.getExpectedPeople();
+				neededDrinks += 0.5 * e.getExpectedPeople();
+				break;
+			}
+		}
+
+		map.put("Meals", neededMeals);
+		map.put("Drinks", neededDrinks);
+
+		return map;
 	}
 
 	private static boolean valuesOutOfRange(IndoorStatus is, WeatherCondition wc) {
@@ -425,15 +571,38 @@ public class Orchestrator_part2 {
 
 	private static void scheduleTimers(PriorityQueue<TimerEvent> timers,
 			EventData ev, String rid) {
-
+		TimerEvent a;
+		
 		// CLIMATE_WAKEUP scheduling
-		TimerEvent a = new TimerEvent(WakeReason.CLIMATE_WAKEUP,
-				ev.getStartTime() - 3*60*60*1000, ev, rid);
+		a = new TimerEvent(WakeReason.CLIMATE_WAKEUP, ev.getStartTime() - 3*60*60*1000, ev,
+				rid);
 		timers.add(a);
 
 		// LUMINANCE_WAKEUP scheduling
 		a = new TimerEvent(WakeReason.LUMINANCE_WAKEUP, ev.getStartTime(), ev,
 				rid);
+		timers.add(a);
+	}
+
+	private static void scheduleEventTimers(PriorityQueue<TimerEvent> timers,
+			EventData ev, String rid) {
+		TimerEvent a;
+
+		scheduleTimers(timers, ev, rid);
+
+		// CLEANING_WAKEUP scheduling
+		a = new TimerEvent(WakeReason.CLEANING_WAKEUP, ev.getStartTime() - 2*60*60*1000, ev,
+				rid);
+		timers.add(a);
+	}
+
+	private static void scheduleFoodTimer(PriorityQueue<TimerEvent> timers,
+			List<EventData> events) {
+		TimerEvent a;
+
+		// FOOD_WAKEUP scheduling
+		a = new TimerEvent(WakeReason.FOOD_WAKEUP, System.currentTimeMillis(),
+				null, null, events);
 		timers.add(a);
 	}
 

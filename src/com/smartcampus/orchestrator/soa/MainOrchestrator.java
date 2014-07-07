@@ -1,21 +1,25 @@
-package com.smartcampus.test.soa;
+package com.smartcampus.orchestrator.soa;
 
 import java.util.PriorityQueue;
 
 import com.smartcampus.acc.ArtificialClimateControl;
 import com.smartcampus.acc.ArtificialClimateControlPortType;
+import com.smartcampus.luminancemanagement.LuminanceManagement;
+import com.smartcampus.luminancemanagement.LuminanceManagementPortType;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
+import com.smartcampus.orchestrator.soa.Orchestrator;
+import com.smartcampus.orchestrator.soa.Orchestrator.Error;
+import com.smartcampus.orchestrator.soa.Orchestrator.TimerEvent;
+import com.smartcampus.orchestrator.soa.Orchestrator.WakeReason;
 import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
-import com.smartcampus.test.soa.Orchestrator_part1.Error;
-import com.smartcampus.test.soa.Orchestrator_part1.TimerEvent;
-import com.smartcampus.test.soa.Orchestrator_part1.WakeReason;
+import com.smartcampus.servicesfacilities.ServicesAndFacilities;
+import com.smartcampus.servicesfacilities.ServicesAndFacilitiesPortType;
 
-public class MainOrchestrator_part1 {
-
+public class MainOrchestrator {
 	private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
 	
 	private static ArtificialClimateControlPortType acc = new ArtificialClimateControl()
@@ -24,7 +28,11 @@ public class MainOrchestrator_part1 {
 		.getNaturalClimateSystemHttpSoap11Endpoint();
 	private static PathsPortType p = new Paths().getPathsHttpSoap11Endpoint();
 	private static RoomUsageDatabasePortType rud = new RoomUsageDatabase().getRoomUsageDatabaseHttpSoap11Endpoint();
-
+	private static LuminanceManagementPortType lm = new LuminanceManagement()
+		.getLuminanceManagementHttpSoap11Endpoint();
+	private static ServicesAndFacilitiesPortType sf =  new ServicesAndFacilities()
+		.getServicesAndFacilitiesHttpSoap11Endpoint();
+	
 	static {
 		// INITIAL EVENT SCHEDULING
 		TimerEvent a = new TimerEvent(WakeReason.DAILY_WAKEUP);
@@ -34,19 +42,22 @@ public class MainOrchestrator_part1 {
 	
 	public static void main(String[] args) {
 		Error res;
-		Orchestrator_part1.setArtificialClimateControlPortType(acc);
-		Orchestrator_part1.setNaturalClimateSystemPortType(nc);
-		Orchestrator_part1.setPathsPortType(p);
-		Orchestrator_part1.setRoomUsageDatabasePortType(rud);
+		Orchestrator.setArtificialClimateControlPortType(acc);
+		Orchestrator.setNaturalClimateSystemPortType(nc);
+		Orchestrator.setPathsPortType(p);
+		Orchestrator.setRoomUsageDatabasePortType(rud);
+		Orchestrator.setLuminanceManagementPortType(lm);
+		Orchestrator.setServicesAndFacilitiesPortType(sf);
+		
 		System.out.println("[ORCH] Start handling of events... ");
 		
 		do {
-			res = Orchestrator_part1.wakeUp(timers);
+			res = Orchestrator.wakeUp(timers);
 		}
 		while (res != Error.NO_EVENT);
 		
 		System.out.println("[ORCH] Handling of events completed.");
 
 	}
-	
+
 }
