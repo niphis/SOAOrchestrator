@@ -1,4 +1,4 @@
-package com.smartcampus.orchestrator.soa;
+package com.smartcampus.orchestrator.soa.test;
 
 import javax.xml.bind.JAXBElement;
 
