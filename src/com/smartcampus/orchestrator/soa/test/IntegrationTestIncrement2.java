@@ -1,6 +1,8 @@
-package com.smartcampus.orchestrator.soa;
+package com.smartcampus.orchestrator.soa.test;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -9,6 +11,9 @@ import com.smartcampus.acc.xsd.IndoorStatus;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
 import com.smartcampus.naturalclimatesystem.xsd.Location;
 import com.smartcampus.naturalclimatesystem.xsd.WeatherCondition;
+import com.smartcampus.orchestrator.soa.Orchestrator_part1.Error;
+import com.smartcampus.orchestrator.soa.Orchestrator_part1.TimerEvent;
+import com.smartcampus.orchestrator.soa.Orchestrator_part1.WakeReason;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.paths.xsd.PathComponent;
 import com.smartcampus.paths.xsd.PathData;
@@ -16,7 +21,7 @@ import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
 import com.smartcampus.roomusagedatabase.xsd.EventData;
 import com.smartcampus.roomusagedatabase.xsd.EventList;
 
-public class Orchestrator_part1 {
+public class IntegrationTestIncrement2 {
 
 	public enum WakeReason {
 		DAILY_WAKEUP, 
@@ -30,31 +35,6 @@ public class Orchestrator_part1 {
 		CLIMATE_WAKEUP_ERROR, 
 	};
 	
-	private static ArtificialClimateControlPortType acc;
-	private static NaturalClimateSystemPortType nc;
-	private static PathsPortType p;
-	private static RoomUsageDatabasePortType rud;
-
-	public static void setArtificialClimateControlPortType
-		(ArtificialClimateControlPortType a) {
-		acc = a;
-	}
-	
-	public static void setNaturalClimateSystemPortType (NaturalClimateSystemPortType n) {
-		nc = n;
-	}
-	
-	public static void setPathsPortType(PathsPortType ps) {
-		p = ps;
-	}
-	
-	public static void setRoomUsageDatabasePortType(RoomUsageDatabasePortType r) {
-		rud = r;
-	}
-	
-	private static com.smartcampus.naturalclimatesystem.xsd.ObjectFactory ncsObjFactory = new com.smartcampus.naturalclimatesystem.xsd.ObjectFactory();
-	private static com.smartcampus.acc.xsd.ObjectFactory accObjFactory = new com.smartcampus.acc.xsd.ObjectFactory();
-
 	public static class TimerEvent implements Comparable<TimerEvent> {
 		public WakeReason reason;
 		public Long time;
@@ -79,152 +59,166 @@ public class Orchestrator_part1 {
 			return (int) (time - o.time);
 		}
 	}
-
+	
 	public static Error wakeUp(PriorityQueue<TimerEvent> timers) {
+
+		System.out.println("######### START #########");
+
 		TimerEvent a = timers.poll();
-		if (a == null) return Error.NO_EVENT;
+		if (a == null) {
+			System.out.println("[ 1  ] timer is empty");
+
+			System.out.println("########## END ##########");
+
+			return Error.NO_EVENT;
+		}
 		
 		switch (a.reason) {
 
 		case DAILY_WAKEUP: {
-			System.out.print("[RU] Searching for events... ");
-			List<EventData> events = rud.searchEvent(null).getEvents();
-			System.out.println("done");
+			System.out.println("[ 2  ] Daily WakeUP");
+			
+			// Queue. Pop in head, push in tail.
+			List<EventData> events = IntegrationTestStaticInput.eventListTest.pollFirst();
+			IntegrationTestStaticInput.eventListTest.offerLast(events);
 			
 			for (int i = 0; i < events.size(); i++) {
-				EventData event = events.get(i);
-				String room = event.getRoomId().getValue(); // room in which the
-															// event is
-				// done
-				int expectedPeople = event.getExpectedPeople();
 				
-				System.out.println("Event " + event.getEventType().getValue()
-						+ " @ " + event.getRoomId().getValue()
-						+ " (expected people = " + event.getExpectedPeople() + ")"
-						+ "\n\tfrom " + new Date(event.getStartTime())
-						+ "\n\tto " + new Date(event.getEndTime()));
+				System.out.println("[ 4." + i + "]\tThe list of event is not empty");
+				
+				EventData event = events.get(i);
+				String room = "TestRoom";
+				
+				int expectedPeople = event.getExpectedPeople();
 				
 				scheduleTimers(timers, event, room);
 				
-				System.out.print("[P] Getting paths to room " + room + "... ");
-				List<Integer> pathsToRoom = p.getPaths(room);
+				
+				List<Integer> pathsToRoom = IntegrationTestStaticInput.pathListTest.pollFirst();
+				IntegrationTestStaticInput.pathListTest.offerLast(pathsToRoom);
+				
 				if (pathsToRoom == null) {
-					System.out.println("FAILED!"); 
+					System.out.println("[ 5." + i + "]\tPath to room is null"); 
 					return Error.DAILY_WAKEUP_ERROR;
 				}
-				System.out.println("done");
+				
+				System.out.println("[ 6." + i + "]\tPath to room is not null");
 				int satisfiedCapacity = 0;
 
 				// for all the needed paths I want to obtain the id of the rooms
 				// in
 				// each one
-				for (int s = 0; (s < pathsToRoom.size())
+				int s;
+				for (s = 0; (s < pathsToRoom.size())
 						&& (satisfiedCapacity < expectedPeople); s++) {
+					System.out.println("[ 8." + i + "." + s + "]\t Path Room List is not empty");
+					System.out.println("[10." + i + "." + s + "]\t Capacity does not satisfy expected people");
+					
 					Integer pathId = pathsToRoom.get(s);
-					System.out.print("[P] Getting path attributes for path "
-							+ pathId + "... ");
-					PathData pd = p.getPathAttributes(pathId);
+					
+					PathData pd = IntegrationTestStaticInput.pathDataListTest.pollFirst();
+					IntegrationTestStaticInput.pathDataListTest.offerLast(pd);
+					
 					if (pd == null) {
-						System.out.println("FAILED!"); 
+						System.out.println("[11." + i + "." + s + "]\t Path Data is null");
 						return Error.DAILY_WAKEUP_ERROR;
 					}
-					System.out.println("done");
-					satisfiedCapacity += pd.getCapacity();
-					List<PathComponent> componentArray = pd.getPath()
-							.getValue().getComponents();
-					for (int r = 0; r < componentArray.size(); r++) {
-						String rid = componentArray.get(r).getRoomId().getValue();
+					
+					System.out.println("[12." + i + "." + s + "]\t Path Data is not null");
+					
+					//satisfiedCapacity += pd.getCapacity();
+					
+					//List<PathComponent> componentArray = pd.getPath().getValue().getComponents();
+					int maxComponents = IntegrationTestStaticInput.componentsNumberListTest.pollFirst();
+					IntegrationTestStaticInput.componentsNumberListTest.offerLast(maxComponents);
+					
+					for (int r = 0; r < maxComponents; r++) {
+						System.out.println("[14." + i + "." + s + "]\t Path Component: " + r);
+						String rid = "TestRoom";
 						scheduleTimers(timers, event, rid);
 					}
+					System.out.println("[13." + i + "." + s + "]\t Path Component is empty");
 				}
+				if (!(s < pathsToRoom.size()))
+					System.out.println("[ 7." + i + "]\t Path Room List is empty");
+				if (IntegrationTestStaticInput.error()) // Capacity
+					System.out.println("[10." + i + "]\t Capacity satisfies expected people");
+				
+				
 			}
+			System.out.println("[ 3  ] The list of event is empty");
 		}
+		
 			break;
 
 		// Input State: roomsToConsider, event, room
 		case CLIMATE_WAKEUP: {
 
 			String roomId = a.room;
+			System.out.println("[15  ] Climate wakeUP");
 
-			Location l = ncsObjFactory.createLocation();
-			l.setRoomId(ncsObjFactory.createLocationRoomId(roomId));
+			WeatherCondition wc = IntegrationTestStaticInput.weatherConditionListTest.pollFirst();
+			IntegrationTestStaticInput.weatherConditionListTest.offerLast(wc);
 
-			System.out.print("[NC] Getting weather conditions for room "
-					+ roomId + "... ");
-			WeatherCondition wc = nc.getWeatherCondition(l);
 			if (wc == null) {
-				System.out.println("FAILED!"); 
+				System.out.println("[16  ] Weather Condition is null");
 				return Error.CLIMATE_WAKEUP_ERROR;
 			}
-			System.out.println("done");
-			
-			System.out.println("Outdoor Conditions:"
-					+ "\n\t Temperature = " + wc.getTemperature()
-					+ "\n\t Humidity = " + wc.getHumidity()
-					+ "\n\t CO2 Level = " + wc.getCo2Level()
-					+ "\n\t Noise Level = " + wc.getNoiseLevel());
-			
-			
-			System.out.print("[AC] Getting indoor status for room " + roomId
-					+ "... ");
-			
-			IndoorStatus is = acc.getIndoorStatus(roomId);
 
-			System.out.println("done");
-		
-			System.out.println("Indoor Status:"
-					+ "\n\t Temperature = " + is.getTemperature()
-					+ "\n\t Humidity = " + is.getHumidity()
-					+ "\n\t CO2 Level = " + is.getCo2Level());
+			System.out.println("[17  ] Weather Condition is not null");
 			
+			IndoorStatus is = IntegrationTestStaticInput.indoorStatusListTest.pollFirst();
+			IntegrationTestStaticInput.indoorStatusListTest.offerLast(is);
+					
 			float desiredTemperature = establishDesiredTemperature(wc);
 			float desiredHumidity = establishDesiredHumidity(is);
 			float desiredCo2level = establishDesiredCo2level(wc);
 			
-			if (!valuesOutOfRange(is, wc))
+			if (!valuesOutOfRange(is, wc)) {
+				System.out.println("[18  ] Values not in the range");
 				break;
+			}
 			
+			System.out.println("[18  ] Values in the range");
 			// choose if use natural or artificial climate control system
 			if (naturalClimateUsable(desiredTemperature, desiredHumidity, desiredCo2level, is, wc)) {
-				System.out.print("[NC] Opening windows in room " + roomId
-						+ "... ");
-				if (!nc.openWindow(l)) {
-					System.out.println("FAILED!"); 
+				System.out.println("[20  ] Natural Regulation");
+				if (IntegrationTestStaticInput.error()) {
+					System.out.println("[22  ] Error"); 
 					return Error.CLIMATE_WAKEUP_ERROR;
 				}
 				else
-					System.out.println("done");
+					System.out.println("[23  ] No Error"); 
 			} else {
 
-				is.setRoomID(accObjFactory.createIndoorStatusRoomID(roomId));
-				is.setTemperature(desiredTemperature);
-				is.setFanSpeed(desiredCo2level);
-				is.setHumidity(desiredHumidity);
-				is.setTimer(0);
-				System.out.print("[AC] Setting indoor parameters for room "
-						+ roomId + "... ");
-				acc.setIndoorParameters(is);
-				System.out.println("done");
+
+				System.out.println("[21  ] Artificial Regulation");
+				//acc.setIndoorParameters(is);
 
 				System.out.print("[NC] Closing windows in room " + roomId
 						+ "... ");
-				if (!nc.closeWindow(l)) {
-					System.out.println("FAILED!"); 
+				if (IntegrationTestStaticInput.error()) {
+					System.out.println("[24  ] Error"); 
 					return Error.CLIMATE_WAKEUP_ERROR;
 				}
 				else
-					System.out.println("done");
+					System.out.println("[25  ] No Error"); 
 			}
 		}
 			break;
 		}
+
+		System.out.println("########## END ##########");
+
 		return Error.SUCCESS;
 	}
 
 	private static boolean valuesOutOfRange(IndoorStatus is, WeatherCondition wc) {
 		
-		
-		
+		boolean ret = IntegrationTestStaticInput.rangesInListTest.pollFirst();
+		IntegrationTestStaticInput.rangesInListTest.offerLast(ret);
+		return ret;
+		/*
 		if (is.getTemperature() != establishDesiredTemperature(wc))
 			return true;
 		if (is.getHumidity() != establishDesiredHumidity(is))
@@ -233,11 +227,12 @@ public class Orchestrator_part1 {
 			return true;
 
 		return false;
+		*/
 	}
 
 	private static float establishDesiredCo2level(WeatherCondition wc) {
 		
-		return Math.min(1000, wc.getCo2Level() + 500);
+		return Math.min(1000, /*wc.getCo2Level() +*/ 500);
 	}
 	private static float establishDesiredTemperature(
 			WeatherCondition outdoorWc) {
@@ -251,14 +246,18 @@ public class Orchestrator_part1 {
 	
 	private static float establishDesiredHumidity(
 			IndoorStatus is) {
-		float in = is.getHumidity();
+		//float in = is.getHumidity();
 		
-		return Math.min(Math.max(30, in), 50);
+		return Math.min(Math.max(30, 20/*in*/), 50);
 	}
 
 	private static boolean naturalClimateUsable(float desiredT, float desiredH, float desiredC, IndoorStatus is,
 			WeatherCondition wc) {
-
+		
+		boolean ret = IntegrationTestStaticInput.naturalClimateListTest.pollFirst();
+		IntegrationTestStaticInput.naturalClimateListTest.offerLast(ret);
+		return ret;
+		/*
 		// pollution check
 		float pollutionLevel = wc.getCo2Level();
 		float pollutionThreshold = 1000;
@@ -303,6 +302,7 @@ public class Orchestrator_part1 {
 			return false;
 		
 		return true;
+		*/
 	}
 
 	private static void scheduleTimers(PriorityQueue<TimerEvent> timers, EventData ev, String rid) {
@@ -312,4 +312,5 @@ public class Orchestrator_part1 {
 		timers.add(a);
 	}
 
+	
 }

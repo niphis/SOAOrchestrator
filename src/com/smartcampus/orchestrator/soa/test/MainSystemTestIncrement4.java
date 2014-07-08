@@ -11,23 +11,27 @@ import com.smartcampus.luminancemanagement.LuminanceManagement;
 import com.smartcampus.luminancemanagement.LuminanceManagementPortType;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystem;
 import com.smartcampus.naturalclimatesystem.NaturalClimateSystemPortType;
-import com.smartcampus.orchestrator.soa.Orchestrator_part2;
-import com.smartcampus.orchestrator.soa.Orchestrator_part2.Error;
-import com.smartcampus.orchestrator.soa.Orchestrator_part2.TimerEvent;
-import com.smartcampus.orchestrator.soa.Orchestrator_part2.WakeReason;
+import com.smartcampus.orchestrator.soa.Orchestrator;
+import com.smartcampus.orchestrator.soa.Orchestrator.Error;
+import com.smartcampus.orchestrator.soa.Orchestrator.TimerEvent;
+import com.smartcampus.orchestrator.soa.Orchestrator.WakeReason;
 import com.smartcampus.paths.Paths;
 import com.smartcampus.paths.PathsPortType;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabase;
 import com.smartcampus.roomusagedatabase.RoomUsageDatabasePortType;
+import com.smartcampus.servicesfacilities.ServicesAndFacilities;
+import com.smartcampus.servicesfacilities.ServicesAndFacilitiesPortType;
 
 /**
  * @author Tom
  *
  */
-public class IntegrationTestIncremental3 {
+public class MainSystemTestIncrement4 {
 
-	
-	private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
+	/**
+	 * @param args
+	 */
+private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>();
 	
 	private static ArtificialClimateControlPortType acc = new ArtificialClimateControl()
 		.getArtificialClimateControlHttpSoap11Endpoint();
@@ -37,6 +41,8 @@ public class IntegrationTestIncremental3 {
 	private static RoomUsageDatabasePortType rud = new RoomUsageDatabase().getRoomUsageDatabaseHttpSoap11Endpoint();
 	private static LuminanceManagementPortType lm = new LuminanceManagement()
 		.getLuminanceManagementHttpSoap11Endpoint();
+	private static ServicesAndFacilitiesPortType sf =  new ServicesAndFacilities()
+		.getServicesAndFacilitiesHttpSoap11Endpoint();
 	
 	public static double getPositiveRate(int err, int tot) {
 		
@@ -62,11 +68,20 @@ public class IntegrationTestIncremental3 {
 			System.out.println("	Average positive rate:");
 			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
 			return;
+		case FOOD_WAKEUP_ERROR:
+			System.out.println("	Food Facilities Services [SERVICES AND FACILITIES SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;
+		case CLEANING_WAKEUP_ERROR:
+			System.out.println("	Cleaning Facilities Services [SERVICES AND FACILITIES SYSTEM]");
+			System.out.println("	Average positive rate:");
+			System.out.println("\t" + getPositiveRate(err,tot)  + "%");
+			return;	
 		}
-	
 	}
 	
-	public static void testOrchestrator(int maxIterations) {
+	private static void testOrchestrator(int maxIterations) {
 		
 		int climateControlErrorCounter = 0;
 		int climateControlEventCounter = 0;
@@ -77,6 +92,12 @@ public class IntegrationTestIncremental3 {
 		int luminanceManagementErrorCounter = 0;
 		int luminanceManagementEventCounter = 0;
 		
+		int foodWakeupErrorCounter = 0;
+		int foodWakeupEventCounter = 0;
+		
+		int cleanWakeupErrorCounter = 0;
+		int cleanWakeupEventCounter = 0;
+		
 		for (int i=0; i<maxIterations; i++) {
 		
 			// INITIAL EVENT SCHEDULING
@@ -85,21 +106,19 @@ public class IntegrationTestIncremental3 {
 			TimerEvent a = new TimerEvent(WakeReason.DAILY_WAKEUP);
 
 			timers.add(a);
-						
-			Orchestrator_part2.setArtificialClimateControlPortType(acc);
-			Orchestrator_part2.setNaturalClimateSystemPortType(nc);
-			Orchestrator_part2.setPathsPortType(p);
-			Orchestrator_part2.setRoomUsageDatabasePortType(rud);
-			Orchestrator_part2.setLuminanceManagementPortType(lm);
+			Orchestrator.setArtificialClimateControlPortType(acc);
+			Orchestrator.setNaturalClimateSystemPortType(nc);
+			Orchestrator.setPathsPortType(p);
+			Orchestrator.setRoomUsageDatabasePortType(rud);
+			Orchestrator.setLuminanceManagementPortType(lm);
+			Orchestrator.setServicesAndFacilitiesPortType(sf);
 			
 			do {
 				
 				if(!timers.isEmpty()) {
-					
 					WakeReason w = timers.element().reason;
-					
 					// Counter on event
-					
+		
 					switch(w) {
 					case DAILY_WAKEUP:
 						dailyWakeupEventCounter++;
@@ -110,16 +129,22 @@ public class IntegrationTestIncremental3 {
 					case LUMINANCE_WAKEUP:
 						luminanceManagementEventCounter++;
 						break;
+					case FOOD_WAKEUP:
+						foodWakeupEventCounter++;
+						break;
+					case CLEANING_WAKEUP:
+						cleanWakeupEventCounter++;
+						break;
 					}
 				}
-				
-				res = Orchestrator_part2.wakeUp(timers);
+		
+				res = Orchestrator.wakeUp(timers);
 				
 				// Counter on error
 				
 				switch (res) {
 				case DAILY_WAKEUP_ERROR:
-					dailyWakeupErrorCounter++;
+					climateControlErrorCounter++;
 					break;
 				case CLIMATE_WAKEUP_ERROR:
 					climateControlErrorCounter++;
@@ -127,11 +152,17 @@ public class IntegrationTestIncremental3 {
 				case LUMINANCE_WAKEUP_ERROR:
 					luminanceManagementErrorCounter++;
 					break;
+				case FOOD_WAKEUP_ERROR:
+					foodWakeupErrorCounter++;
+					break;
+				case CLEANING_WAKEUP_ERROR:
+					cleanWakeupErrorCounter++;
+					break;
 				}
 			}
 			
 			while (res != Error.NO_EVENT);
-			
+		
 		}
 		
 		// Print statistics
@@ -140,8 +171,10 @@ public class IntegrationTestIncremental3 {
 		printStatistics(Error.DAILY_WAKEUP_ERROR,dailyWakeupErrorCounter,dailyWakeupEventCounter);
 		printStatistics(Error.CLIMATE_WAKEUP_ERROR,climateControlErrorCounter,climateControlEventCounter);
 		printStatistics(Error.LUMINANCE_WAKEUP_ERROR,luminanceManagementErrorCounter,luminanceManagementEventCounter);
+		printStatistics(Error.FOOD_WAKEUP_ERROR,foodWakeupErrorCounter,foodWakeupEventCounter);
+		printStatistics(Error.CLEANING_WAKEUP_ERROR,cleanWakeupErrorCounter,cleanWakeupEventCounter);
 	}
-
+	
 	public static void main(String[] args) {
 		testOrchestrator(10000);
 	}

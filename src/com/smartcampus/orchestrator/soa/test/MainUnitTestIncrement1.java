@@ -23,7 +23,7 @@ import com.smartcampus.servicesfacilities.xsd.FoodList;
 
 
 
-public class UnitTestIncrement1 {
+public class MainUnitTestIncrement1 {
 	private static NaturalClimateSystemPortType nc;
 	private static ArtificialClimateControlPortType acc;
 	private static LuminanceManagementPortType lm;
