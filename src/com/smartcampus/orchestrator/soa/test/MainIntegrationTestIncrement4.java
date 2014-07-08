@@ -176,7 +176,7 @@ private static PriorityQueue<TimerEvent> timers = new PriorityQueue<TimerEvent>(
 	}
 	
 	public static void main(String[] args) {
-		testOrchestrator(10000);
+		testOrchestrator(1000);
 	}
 
 }
